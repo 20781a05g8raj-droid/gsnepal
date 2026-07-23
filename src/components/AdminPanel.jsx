@@ -18,7 +18,13 @@ import {
   Building2,
   BarChart3,
   Users,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  DollarSign,
+  FileSpreadsheet,
+  Plus,
+  X,
+  Filter
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -27,9 +33,12 @@ export default function AdminPanel() {
     sellers = [],
     buyers = [],
     inquiries = [],
+    salesJournal = [],
     verifySeller,
     deleteSeller,
     deleteBuyer,
+    addSalesJournalEntry,
+    deleteSalesJournalEntry,
     approveProduct,
     deleteProduct,
     resetData,
@@ -37,25 +46,113 @@ export default function AdminPanel() {
     showToast
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'sellers' | 'buyers' | 'products' | 'inquiries' | 'sql'
+  const [activeTab, setActiveTab] = useState('journal'); // 'overview' | 'journal' | 'sellers' | 'buyers' | 'products' | 'inquiries' | 'sql'
   const [sqlCopied, setSqlCopied] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedSellerFilter, setSelectedSellerFilter] = useState('All Sellers');
+
+  // New Journal Entry Modal State
+  const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
+  const [newJournal, setNewJournal] = useState({
+    sellerId: '',
+    sellerName: '',
+    buyerName: '',
+    productName: '',
+    category: 'Industrial Machinery',
+    quantity: 1,
+    unit: 'Pcs',
+    pricePerUnit: '',
+    paymentStatus: 'Paid / Completed',
+    deliveryStatus: 'Dispatched'
+  });
 
   const safeProducts = Array.isArray(products) ? products : [];
   const safeSellers = Array.isArray(sellers) ? sellers : [];
   const safeBuyers = Array.isArray(buyers) ? buyers : [];
   const safeInquiries = Array.isArray(inquiries) ? inquiries : [];
+  const safeJournal = Array.isArray(salesJournal) ? salesJournal : [];
 
   const pendingProducts = safeProducts.filter(p => p && !p.is_approved);
   const approvedProducts = safeProducts.filter(p => p && p.is_approved);
 
-  // Total Catalog Gross Value calculation safely
+  // Total Calculations
   const totalCatalogValue = safeProducts.reduce((acc, p) => acc + (Number(p?.price) || 0), 0);
   const totalInquiryValue = safeInquiries.reduce((acc, i) => acc + (Number(i?.estimatedValue) || 0), 0);
+
+  // Total Realized Sales Revenue from Journal
+  const totalRealizedSales = safeJournal.reduce((acc, j) => acc + (Number(j?.totalAmount) || 0), 0);
+  const totalUnitsSold = safeJournal.reduce((acc, j) => acc + (Number(j?.quantity) || 0), 0);
+
+  // Per-Seller Aggregates Calculation (Pata chalega kiss seller ka kitna product & rupee sell hua hai)
+  const sellerSalesAggregates = safeSellers.map(seller => {
+    const sellerJournal = safeJournal.filter(j => 
+      j.sellerId === seller.id || 
+      (j.sellerName && j.sellerName.toLowerCase() === seller.companyName.toLowerCase())
+    );
+
+    const totalSellerRevenue = sellerJournal.reduce((acc, j) => acc + (Number(j.totalAmount) || 0), 0);
+    const totalSellerUnits = sellerJournal.reduce((acc, j) => acc + (Number(j.quantity) || 0), 0);
+
+    // Products breakdown for this seller
+    const productsBreakdownMap = {};
+    sellerJournal.forEach(j => {
+      if (!productsBreakdownMap[j.productName]) {
+        productsBreakdownMap[j.productName] = {
+          productName: j.productName,
+          category: j.category,
+          totalQty: 0,
+          unit: j.unit,
+          totalRevenue: 0
+        };
+      }
+      productsBreakdownMap[j.productName].totalQty += Number(j.quantity) || 0;
+      productsBreakdownMap[j.productName].totalRevenue += Number(j.totalAmount) || 0;
+    });
+
+    return {
+      seller,
+      totalRevenue: totalSellerRevenue,
+      totalUnits: totalSellerUnits,
+      totalOrders: sellerJournal.length,
+      productsSoldList: Object.values(productsBreakdownMap)
+    };
+  });
+
+  const filteredJournalEntries = selectedSellerFilter === 'All Sellers'
+    ? safeJournal
+    : safeJournal.filter(j => j.sellerName === selectedSellerFilter || j.sellerId === selectedSellerFilter);
 
   const formatPrice = (amount) => {
     const num = Number(amount);
     return isNaN(num) ? '0' : num.toLocaleString();
+  };
+
+  const handleJournalFormSubmit = (e) => {
+    e.preventDefault();
+    if (!newJournal.sellerName || !newJournal.productName || !newJournal.pricePerUnit) {
+      if (showToast) showToast('Please fill all required fields', 'warning');
+      return;
+    }
+
+    addSalesJournalEntry({
+      ...newJournal,
+      pricePerUnit: Number(newJournal.pricePerUnit),
+      quantity: Number(newJournal.quantity)
+    });
+
+    setIsJournalModalOpen(false);
+    setNewJournal({
+      sellerId: '',
+      sellerName: '',
+      buyerName: '',
+      productName: '',
+      category: 'Industrial Machinery',
+      quantity: 1,
+      unit: 'Pcs',
+      pricePerUnit: '',
+      paymentStatus: 'Paid / Completed',
+      deliveryStatus: 'Dispatched'
+    });
   };
 
   const sqlSchema = `-- B2B Marketplace Enterprise Supabase PostgreSQL Schema
@@ -92,27 +189,22 @@ create table products (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 3. Inquiries Table (WhatsApp Lead Logs)
-create table inquiries (
+-- 3. Sales Journal Ledger Table (Seller Sales Tracking)
+create table sales_journal (
   id uuid default uuid_generate_v4() primary key,
-  buyer_id uuid references profiles(id),
-  product_id uuid references products(id),
   seller_id uuid references profiles(id),
-  status text default 'WhatsApp Connected',
+  seller_name text not null,
+  buyer_name text not null,
+  product_name text not null,
+  category text,
+  quantity integer default 1,
+  unit text default 'Pcs',
+  price_per_unit decimal not null,
+  total_amount decimal not null,
+  payment_status text default 'Paid / Completed',
+  delivery_status text default 'Delivered',
   created_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- 4. Row Level Security (RLS) Policies
-alter table products enable row level security;
-
-create policy "Sellers view own products" on products
-  for select using (auth.uid() = seller_id);
-
-create policy "Sellers insert own products" on products
-  for insert with check (auth.uid() = seller_id);
-
-create policy "Buyers view approved products" on products
-  for select using (is_approved = true);`;
+);`;
 
   const copySql = () => {
     try {
@@ -136,26 +228,26 @@ create policy "Buyers view approved products" on products
                 Enterprise Business ERP Portal
               </span>
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30">
-                Live Data Synchronized
+                Live Trade Data Synchronized
               </span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white">
-              Super Admin <span className="text-purple-400">Control & Analytics Hub</span>
+              Super Admin <span className="text-purple-400">Control & Sales Journal Hub</span>
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-300">
-              Manage seller registrations, buyer directories, product pricing, pending approvals, and WhatsApp inquiry leads.
+              Track per-seller sales performance, revenue amounts in Rs., products sold breakdown, and seller directories.
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setIsAddModalOpen && setIsAddModalOpen(true)}
-              className="px-5 py-3 rounded-2xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2 transition-all"
+              onClick={() => setIsJournalModalOpen(true)}
+              className="px-5 py-3 rounded-2xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-900/40 flex items-center justify-center gap-2 transition-all"
             >
-              <PlusCircle className="w-5 h-5" />
-              <span>Add Auto-Approved Product</span>
+              <Plus className="w-5 h-5" />
+              <span>Record Seller Sale</span>
             </button>
 
             <button
@@ -171,6 +263,18 @@ create policy "Buyers view approved products" on products
 
       {/* ERP Sub-Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-bold">
+        <button
+          onClick={() => setActiveTab('journal')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shrink-0 ${
+            activeTab === 'journal'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Seller Sales Journal ({safeJournal.length})</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shrink-0 ${
@@ -249,7 +353,212 @@ create policy "Buyers view approved products" on products
         </button>
       </div>
 
-      {/* 1. EXECUTIVE OVERVIEW DASHBOARD */}
+      {/* 1. SELLER SALES JOURNAL & TRADE LEDGER (NEW COMPREHENSIVE SUB-MODULE) */}
+      {activeTab === 'journal' && (
+        <div className="space-y-8">
+          
+          {/* Realized Sales KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Realized Revenue</span>
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <p className="text-3xl font-extrabold text-emerald-600">Rs. {formatPrice(totalRealizedSales)}</p>
+              <p className="text-xs text-slate-500 font-medium">Completed trade transactions volume</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Wholesale Quantity Sold</span>
+                <Package className="w-5 h-5 text-indigo-600" />
+              </div>
+              <p className="text-3xl font-extrabold text-slate-900">{formatPrice(totalUnitsSold)}</p>
+              <p className="text-xs text-slate-500 font-medium">Units dispatched across all sellers</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Recorded Trades</span>
+                <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+              </div>
+              <p className="text-3xl font-extrabold text-purple-600">{safeJournal.length}</p>
+              <p className="text-xs text-slate-500 font-medium">Journal transaction records</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Active Selling Suppliers</span>
+                <Store className="w-5 h-5 text-teal-600" />
+              </div>
+              <p className="text-3xl font-extrabold text-teal-600">
+                {sellerSalesAggregates.filter(s => s.totalOrders > 0).length} / {safeSellers.length}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">Sellers with recorded sales</p>
+            </div>
+          </div>
+
+          {/* PER-SELLER SALES & PRODUCTS SOLD BREAKDOWN (KISS SELLER KA KITNA RUPEE & KYA KYA PRODUCT SELL HUWA HAI) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                  <Store className="w-5 h-5 text-indigo-600" />
+                  Per-Seller Sales & Products Sold Breakdown
+                </h3>
+                <p className="text-xs text-slate-500">Summary showing which seller sold how much revenue (Rs.) and which exact products</p>
+              </div>
+
+              {/* Filter by Seller */}
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <select
+                  value={selectedSellerFilter}
+                  onChange={(e) => setSelectedSellerFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 shadow-sm"
+                >
+                  <option value="All Sellers">All Sellers Overview</option>
+                  {safeSellers.map(s => (
+                    <option key={s.id} value={s.companyName}>{s.companyName}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {sellerSalesAggregates
+                .filter(agg => selectedSellerFilter === 'All Sellers' || agg.seller.companyName === selectedSellerFilter)
+                .map(agg => (
+                <div key={agg.seller.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+                  <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-indigo-600" />
+                        <h4 className="font-bold text-slate-900 text-base">{agg.seller.companyName}</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">Contact: {agg.seller.contactPerson} (+{agg.seller.phone})</p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-xs border border-emerald-200">
+                      Rs. {formatPrice(agg.totalRevenue)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Total Sales Volume</p>
+                      <p className="text-lg font-extrabold text-slate-900">Rs. {formatPrice(agg.totalRevenue)}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Total Orders Completed</p>
+                      <p className="text-lg font-extrabold text-indigo-700">{agg.totalOrders} Trades</p>
+                    </div>
+                  </div>
+
+                  {/* Kya Kya Product Sell Huwa Hai Section */}
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs uppercase tracking-wider font-bold text-slate-500 flex items-center justify-between">
+                      <span>Products Sold Breakdown (Kya Kya Sell Huwa):</span>
+                      <span className="text-indigo-600 font-bold">{agg.productsSoldList.length} Unique Items</span>
+                    </p>
+
+                    {agg.productsSoldList.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        No recorded sales yet for this seller.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {agg.productsSoldList.map((prod, idx) => (
+                          <div key={idx} className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
+                            <div>
+                              <p className="font-bold text-slate-900">{prod.productName}</p>
+                              <p className="text-[10px] text-indigo-600 font-semibold">{prod.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-extrabold text-emerald-700">Rs. {formatPrice(prod.totalRevenue)}</p>
+                              <p className="text-[10px] font-bold text-slate-600">{prod.totalQty} {prod.unit} Sold</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* DETAILED TRANSACTION SALES JOURNAL LEDGER TABLE */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+                  Transaction Sales Journal Ledger
+                </h3>
+                <p className="text-xs text-slate-500">Detailed line item records of all completed wholesale sales transactions</p>
+              </div>
+              <button
+                onClick={() => setIsJournalModalOpen(true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Record New Sale
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-[11px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-200">
+                    <th className="py-4 px-4">Date & ID</th>
+                    <th className="py-4 px-4">Seller Company</th>
+                    <th className="py-4 px-4">Product Name</th>
+                    <th className="py-4 px-4">Buyer Name</th>
+                    <th className="py-4 px-4">Qty & Unit</th>
+                    <th className="py-4 px-4">Unit Price (Rs.)</th>
+                    <th className="py-4 px-4">Total Amount (Rs.)</th>
+                    <th className="py-4 px-4">Payment Status</th>
+                    <th className="py-4 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredJournalEntries.map(j => (
+                    <tr key={j.id} className="hover:bg-slate-50/80">
+                      <td className="py-4 px-4">
+                        <p className="font-bold text-slate-900 font-mono text-[11px]">{j.id}</p>
+                        <p className="text-[10px] text-slate-400">{j.date}</p>
+                      </td>
+                      <td className="py-4 px-4 font-bold text-indigo-700 max-w-[150px] truncate">{j.sellerName}</td>
+                      <td className="py-4 px-4 font-semibold text-slate-900 max-w-[180px] truncate">{j.productName}</td>
+                      <td className="py-4 px-4 text-slate-700 truncate max-w-[140px]">{j.buyerName}</td>
+                      <td className="py-4 px-4 font-bold text-slate-800">{j.quantity} {j.unit}</td>
+                      <td className="py-4 px-4 font-semibold text-slate-600">Rs. {formatPrice(j.pricePerUnit)}</td>
+                      <td className="py-4 px-4 font-extrabold text-emerald-700">Rs. {formatPrice(j.totalAmount)}</td>
+                      <td className="py-4 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200">
+                          {j.paymentStatus}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <button
+                          onClick={() => deleteSalesJournalEntry && deleteSalesJournalEntry(j.id)}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                          title="Delete journal entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* 2. EXECUTIVE OVERVIEW DASHBOARD */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           
@@ -289,11 +598,11 @@ create policy "Buyers view approved products" on products
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">WhatsApp Inquiry Leads</span>
-                <MessageSquare className="w-5 h-5 text-teal-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Realized Revenue</span>
+                <DollarSign className="w-5 h-5 text-emerald-600" />
               </div>
-              <p className="text-3xl font-extrabold text-teal-600">{safeInquiries.length}</p>
-              <p className="text-xs text-slate-500 font-medium">Est. Value: Rs. {(totalInquiryValue / 100000).toFixed(1)} Lakhs</p>
+              <p className="text-3xl font-extrabold text-emerald-600">Rs. {formatPrice(totalRealizedSales)}</p>
+              <p className="text-xs text-slate-500 font-medium">Journal sales volume</p>
             </div>
           </div>
 
@@ -311,9 +620,9 @@ create policy "Buyers view approved products" on products
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                  <span className="text-xs font-bold text-slate-600">Total Listed Catalog Unit Value</span>
-                  <span className="font-extrabold text-slate-900 text-base">Rs. {formatPrice(totalCatalogValue)}</span>
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-xs font-bold text-emerald-900">Total Realized Seller Sales Revenue</span>
+                  <span className="font-extrabold text-emerald-700 text-base">Rs. {formatPrice(totalRealizedSales)}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200">
@@ -321,9 +630,9 @@ create policy "Buyers view approved products" on products
                   <span className="font-extrabold text-indigo-700 text-base">Rs. {formatPrice(totalInquiryValue)}</span>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-purple-50 border border-purple-200">
-                  <span className="text-xs font-bold text-purple-900">Average Order Value per Lead</span>
-                  <span className="font-extrabold text-purple-700 text-base">Rs. {formatPrice(Math.round(totalInquiryValue / (safeInquiries.length || 1)))}</span>
+                <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-xs font-bold text-slate-600">Total Listed Catalog Unit Value</span>
+                  <span className="font-extrabold text-slate-900 text-base">Rs. {formatPrice(totalCatalogValue)}</span>
                 </div>
               </div>
             </div>
@@ -372,7 +681,7 @@ create policy "Buyers view approved products" on products
         </div>
       )}
 
-      {/* 2. REGISTERED SELLERS ERP DIRECTORY */}
+      {/* 3. REGISTERED SELLERS ERP DIRECTORY */}
       {activeTab === 'sellers' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -449,7 +758,7 @@ create policy "Buyers view approved products" on products
         </div>
       )}
 
-      {/* 3. REGISTERED BUYERS ERP DIRECTORY */}
+      {/* 4. REGISTERED BUYERS ERP DIRECTORY */}
       {activeTab === 'buyers' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -507,7 +816,7 @@ create policy "Buyers view approved products" on products
         </div>
       )}
 
-      {/* 4. MASTER CATALOG & PRODUCT ERP */}
+      {/* 5. MASTER CATALOG & PRODUCT ERP */}
       {activeTab === 'products' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -569,7 +878,7 @@ create policy "Buyers view approved products" on products
         </div>
       )}
 
-      {/* 5. WHATSAPP INQUIRY LEADS LOG ERP */}
+      {/* 6. WHATSAPP INQUIRY LEADS LOG ERP */}
       {activeTab === 'inquiries' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -620,7 +929,7 @@ create policy "Buyers view approved products" on products
         </div>
       )}
 
-      {/* 6. SUPABASE SQL MIGRATION INSPECTOR */}
+      {/* 7. SUPABASE SQL MIGRATION INSPECTOR */}
       {activeTab === 'sql' && (
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -640,6 +949,150 @@ create policy "Buyers view approved products" on products
           <pre className="p-6 rounded-2xl bg-slate-900 text-emerald-400 text-xs font-mono leading-relaxed overflow-x-auto whitespace-pre-wrap shadow-inner">
             {sqlSchema}
           </pre>
+        </div>
+      )}
+
+      {/* MODAL: Record New Seller Sales Journal Entry */}
+      {isJournalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+          <div 
+            className="relative w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-lg">Record Seller Trade Sale</h3>
+              </div>
+              <button
+                onClick={() => setIsJournalModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleJournalFormSubmit} className="p-6 space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Select Seller Company *</label>
+                <select
+                  required
+                  value={newJournal.sellerName}
+                  onChange={(e) => {
+                    const sel = safeSellers.find(s => s.companyName === e.target.value);
+                    setNewJournal({
+                      ...newJournal,
+                      sellerName: e.target.value,
+                      sellerId: sel ? sel.id : 'seller-101'
+                    });
+                  }}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">-- Select Seller --</option>
+                  {safeSellers.map(s => (
+                    <option key={s.id} value={s.companyName}>{s.companyName}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Product Name Sold *</label>
+                <input
+                  type="text"
+                  required
+                  value={newJournal.productName}
+                  onChange={(e) => setNewJournal({ ...newJournal, productName: e.target.value })}
+                  placeholder="e.g. Disposable Sterile Syringe Luer Lock"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Buyer Name / Firm</label>
+                  <input
+                    type="text"
+                    required
+                    value={newJournal.buyerName}
+                    onChange={(e) => setNewJournal({ ...newJournal, buyerName: e.target.value })}
+                    placeholder="Buyer Firm Name"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Product Category</label>
+                  <input
+                    type="text"
+                    value={newJournal.category}
+                    onChange={(e) => setNewJournal({ ...newJournal, category: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Quantity *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newJournal.quantity}
+                    onChange={(e) => setNewJournal({ ...newJournal, quantity: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-extrabold focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Unit</label>
+                  <input
+                    type="text"
+                    value={newJournal.unit}
+                    onChange={(e) => setNewJournal({ ...newJournal, unit: e.target.value })}
+                    placeholder="Pcs / Set / Kg"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Price per Unit (Rs.) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newJournal.pricePerUnit}
+                    onChange={(e) => setNewJournal({ ...newJournal, pricePerUnit: e.target.value })}
+                    placeholder="Rs. Price"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-extrabold text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between text-xs font-bold">
+                <span className="text-emerald-900">Total Calculated Trade Amount:</span>
+                <span className="text-emerald-700 text-sm">
+                  Rs. {formatPrice((Number(newJournal.quantity) || 1) * (Number(newJournal.pricePerUnit) || 0))}
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsJournalModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all"
+                >
+                  Save Journal Entry
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
