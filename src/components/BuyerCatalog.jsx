@@ -88,7 +88,7 @@ export default function BuyerCatalog() {
     <div className="space-y-8 pb-16">
       
       {/* Bright Hero Section with AI Parallax Background Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-slate-900 border border-indigo-200 p-6 sm:p-12 shadow-2xl min-h-[380px] sm:min-h-[420px] flex items-center">
+      <section className="relative overflow-hidden rounded-3xl bg-slate-900 border border-indigo-200 p-5 sm:p-12 shadow-2xl min-h-[360px] sm:min-h-[420px] flex items-center">
         
         {/* Parallax Background Banner Image */}
         <div 
@@ -132,22 +132,22 @@ export default function BuyerCatalog() {
           </div>
 
           {/* Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-2">
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-xl sm:text-2xl font-extrabold text-white">{approvedProducts.length}+</p>
-              <p className="text-[10px] sm:text-xs text-slate-300 font-medium">Approved Products</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 pt-2">
+            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
+              <p className="text-lg sm:text-2xl font-extrabold text-white">{approvedProducts.length}+</p>
+              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">Approved Products</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-xl sm:text-2xl font-extrabold text-emerald-400">100%</p>
-              <p className="text-[10px] sm:text-xs text-slate-300 font-medium">Verified Wholesalers</p>
+            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
+              <p className="text-lg sm:text-2xl font-extrabold text-emerald-400">100%</p>
+              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">Verified Wholesalers</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-xl sm:text-2xl font-extrabold text-indigo-300">Direct</p>
-              <p className="text-[10px] sm:text-xs text-slate-300 font-medium">WhatsApp Leads</p>
+            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
+              <p className="text-lg sm:text-2xl font-extrabold text-indigo-300">Direct</p>
+              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">WhatsApp Leads</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-xl sm:text-2xl font-extrabold text-purple-300">Parallax</p>
-              <p className="text-[10px] sm:text-xs text-slate-300 font-medium">AI Banner Active</p>
+            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
+              <p className="text-lg sm:text-2xl font-extrabold text-purple-300">Parallax</p>
+              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">AI Banner Active</p>
             </div>
           </div>
         </div>
@@ -160,19 +160,19 @@ export default function BuyerCatalog() {
             <Filter className="w-4 h-4 text-indigo-600" />
             <span>Product Categories</span>
           </div>
-          <span className="text-xs text-slate-500 font-medium">
+          <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
             Showing {filteredProducts.length} approved products
           </span>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-none">
           {PRESET_CATEGORIES.map(cat => {
             const isActive = selectedCategory === cat;
             return (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`shrink-0 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                     : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
@@ -185,7 +185,7 @@ export default function BuyerCatalog() {
         </div>
       </section>
 
-      {/* Product Grid: 2 columns on Mobile (grid-cols-2), 2 columns on Medium, 3 columns on Laptop (lg:grid-cols-3) */}
+      {/* Forced Mobile 2-Column Grid via .mobile-2col-grid class */}
       {filteredProducts.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 sm:p-12 text-center space-y-3 border border-slate-200 shadow-sm">
           <Package className="w-10 h-10 sm:w-12 sm:h-12 text-slate-400 mx-auto" />
@@ -195,7 +195,7 @@ export default function BuyerCatalog() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+        <div className="mobile-2col-grid">
           {filteredProducts.map(product => {
             const imgCount = (product.images && product.images.length > 0) ? product.images.length : 1;
             
@@ -203,9 +203,9 @@ export default function BuyerCatalog() {
               <div
                 key={product.id}
                 onClick={() => setSelectedProductModal(product)}
-                className="glass-card rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer flex flex-col justify-between"
+                className="glass-card rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer flex flex-col justify-between min-w-0"
               >
-                <div>
+                <div className="min-w-0">
                   {/* Product Cover Image */}
                   <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
                     <img
@@ -217,83 +217,75 @@ export default function BuyerCatalog() {
                       }}
                     />
                     
-                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col items-start gap-1">
-                      <span className="px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-white/90 backdrop-blur-md text-[9px] sm:text-[11px] font-bold text-indigo-700 border border-slate-200 shadow-sm truncate max-w-[100px] sm:max-w-none">
+                    <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 flex flex-col items-start gap-1">
+                      <span className="px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded bg-white/90 backdrop-blur-md text-[8px] sm:text-[11px] font-bold text-indigo-700 border border-slate-200 shadow-sm truncate max-w-[80px] sm:max-w-none">
                         {product.category}
                       </span>
                     </div>
 
-                    <span className="absolute top-2 right-2 sm:top-3 sm:right-3 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-50 text-[9px] sm:text-[11px] font-bold text-emerald-700 border border-emerald-200 shadow-sm flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    <span className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded bg-emerald-50 text-[8px] sm:text-[11px] font-bold text-emerald-700 border border-emerald-200 shadow-sm flex items-center gap-0.5">
+                      <ShieldCheck className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
                       <span className="hidden sm:inline">Verified</span>
                     </span>
 
                     {imgCount > 1 && (
-                      <span className="absolute bottom-1.5 left-2 sm:bottom-2 sm:left-3 text-[9px] sm:text-[11px] text-slate-700 bg-white/90 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1 font-bold shadow-sm">
+                      <span className="absolute bottom-1 left-1.5 sm:bottom-2 sm:left-3 text-[8px] sm:text-[11px] text-slate-700 bg-white/90 px-1 py-0.5 rounded backdrop-blur-sm flex items-center gap-0.5 font-bold shadow-sm">
                         <ImageIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
                         {imgCount}
                       </span>
                     )}
-
-                    <span className="absolute bottom-1.5 right-2 sm:bottom-2 sm:right-3 text-[9px] sm:text-[11px] text-slate-600 bg-white/80 px-1.5 py-0.5 rounded backdrop-blur-sm flex items-center gap-1 font-semibold">
-                      <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-500" />
-                      {product.views || 150}
-                    </span>
                   </div>
 
                   {/* Card Details */}
-                  <div className="p-3 sm:p-5 space-y-2 sm:space-y-3">
+                  <div className="p-2.5 sm:p-5 space-y-1.5 sm:space-y-3 min-w-0">
                     <div>
-                      <h3 className="font-bold text-slate-900 text-xs sm:text-base line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                      <h3 className="font-bold text-slate-900 text-[11px] sm:text-base line-clamp-1 group-hover:text-indigo-600 transition-colors">
                         {product.name}
                       </h3>
                       {product.subcategory && (
-                        <p className="text-[9px] sm:text-[11px] text-indigo-600 font-semibold truncate pt-0.5">
+                        <p className="text-[8px] sm:text-[11px] text-indigo-600 font-semibold truncate pt-0.5">
                           ↳ {product.subcategory}
                         </p>
                       )}
                     </div>
 
-                    <p className="text-slate-600 text-[11px] sm:text-xs line-clamp-2 leading-tight sm:leading-relaxed">
+                    <p className="text-slate-600 text-[10px] sm:text-xs line-clamp-2 leading-tight sm:leading-relaxed">
                       {product.description}
                     </p>
 
                     {/* Price & MOQ Box */}
-                    <div className="bg-slate-50 rounded-lg sm:rounded-xl p-2 sm:p-3 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div className="bg-slate-50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 border border-slate-200 space-y-1 min-w-0">
                       <div>
-                        <p className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400">Wholesale Price</p>
-                        <p className="text-sm sm:text-lg font-extrabold text-slate-900">
-                          Rs. {(Number(product.price) || 0).toLocaleString()} <span className="text-[10px] sm:text-xs font-normal text-slate-500">/ {product.unit}</span>
+                        <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400">Wholesale Price</p>
+                        <p className="text-xs sm:text-lg font-extrabold text-slate-900 leading-tight">
+                          Rs. {(Number(product.price) || 0).toLocaleString()}
                         </p>
+                        <p className="text-[8px] sm:text-xs text-slate-500 font-normal">/ {product.unit}</p>
                       </div>
-                      <div className="text-left sm:text-right">
-                        <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400">Min. Order</p>
-                        <p className="text-[10px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 inline-block">{product.moq}</p>
+                      <div className="pt-0.5 border-t border-slate-200/60 flex items-center justify-between">
+                        <span className="text-[8px] uppercase font-bold text-slate-400">MOQ:</span>
+                        <span className="text-[9px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100 truncate max-w-[70px] sm:max-w-none">{product.moq}</span>
                       </div>
                     </div>
 
                     {/* Seller Details */}
-                    <div className="flex items-center justify-between pt-1 text-[10px] sm:text-xs text-slate-500 border-t border-slate-100">
-                      <div className="flex items-center gap-1 truncate max-w-[120px] sm:max-w-[180px]">
-                        <Building2 className="w-3 h-3 text-indigo-600 shrink-0" />
+                    <div className="flex items-center justify-between pt-0.5 text-[9px] sm:text-xs text-slate-500 border-t border-slate-100 min-w-0">
+                      <div className="flex items-center gap-1 truncate max-w-full">
+                        <Building2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-indigo-600 shrink-0" />
                         <span className="truncate font-semibold text-slate-700">{product.seller_name}</span>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-1 shrink-0 text-slate-500">
-                        <MapPin className="w-3 h-3 text-slate-400" />
-                        <span>{product.seller_location}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Card WhatsApp Action CTA */}
-                <div className="p-3 pt-0 sm:p-5 sm:pt-0">
+                <div className="p-2.5 pt-0 sm:p-5 sm:pt-0">
                   <button
                     onClick={(e) => handleWhatsAppClick(e, product)}
-                    className="w-full py-2 px-2.5 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all group-hover:shadow-emerald-600/30"
+                    className="w-full py-1.5 px-2 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl font-bold text-[9px] sm:text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1 transition-all group-hover:shadow-emerald-600/30"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 fill-emerald-200/30 shrink-0" />
-                    <span className="truncate">WhatsApp Inquire</span>
+                    <MessageSquare className="w-3 h-3 fill-emerald-200/30 shrink-0" />
+                    <span className="truncate">Inquire</span>
                     <ArrowUpRight className="w-3 h-3 opacity-80 shrink-0 hidden sm:inline" />
                   </button>
                 </div>
