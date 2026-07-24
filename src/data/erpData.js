@@ -194,5 +194,50 @@ export const INITIAL_SALES_JOURNAL = [
     totalAmount: 1450000,
     paymentStatus: 'Paid / Completed',
     deliveryStatus: 'Delivered'
+  },
+  {
+    id: 'JRN-2026-006',
+    date: '2026-07-10',
+    sellerId: 'seller-105',
+    sellerName: 'MedTech Surgical & Hospital Supplies',
+    buyerName: 'National Hospital & Research Centre',
+    productName: 'Automatic Digital Blood Pressure Monitor Pro',
+    category: 'Medical & Healthcare',
+    quantity: 150,
+    unit: 'Pcs',
+    pricePerUnit: 2800,
+    totalAmount: 420000,
+    paymentStatus: 'Paid / Completed',
+    deliveryStatus: 'Delivered'
+  },
+  {
+    id: 'JRN-2026-007',
+    date: '2026-07-08',
+    sellerId: 'seller-102',
+    sellerName: 'Himalayan Herbal & Spices Export',
+    buyerName: 'Ayurveda Wellness Care Pvt Ltd',
+    productName: 'Pure Himalayan Shilajit Resin 100g Jar',
+    category: 'Agriculture & Food',
+    quantity: 300,
+    unit: 'Jar',
+    pricePerUnit: 1800,
+    totalAmount: 540000,
+    paymentStatus: 'Paid / Completed',
+    deliveryStatus: 'Delivered'
+  },
+  {
+    id: 'JRN-2026-008',
+    date: '2026-07-05',
+    sellerId: 'seller-101',
+    sellerName: 'Apex Industrial Machines Pvt Ltd',
+    buyerName: 'Everest Engineering Works',
+    productName: 'High Speed Automatic Wire Nail Making Machine',
+    category: 'Industrial Machinery',
+    quantity: 3,
+    unit: 'Set',
+    pricePerUnit: 320000,
+    totalAmount: 960000,
+    paymentStatus: 'Paid / Completed',
+    deliveryStatus: 'Delivered'
   }
 ];

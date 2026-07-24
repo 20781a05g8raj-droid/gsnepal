@@ -10,9 +10,56 @@ import {
   Filter,
   Zap,
   Package,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Grid,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { PRESET_CATEGORIES, DEFAULT_WHATSAPP_NUMBER } from '../lib/supabase';
+
+// Visual Image Category Cards Definition
+const CATEGORY_CARDS_DATA = [
+  {
+    name: 'All Categories',
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Explore Full B2B Catalog'
+  },
+  {
+    name: 'Medical & Healthcare',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Syringes & Surgical Supplies'
+  },
+  {
+    name: 'Industrial Machinery',
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Paper Cup & Plastic Units'
+  },
+  {
+    name: 'Agriculture & Food',
+    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Himalayan Spices & Herbs'
+  },
+  {
+    name: 'Electronics & Solar',
+    image: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Solar Panels & Controllers'
+  },
+  {
+    name: 'Textiles & Apparel',
+    image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Fabrics, Shawls & Garments'
+  },
+  {
+    name: 'Construction Materials',
+    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Steel, Cement & Roofing'
+  },
+  {
+    name: 'Chemicals & Plastics',
+    image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80',
+    subtitle: 'Polymers & Industrial Solvents'
+  }
+];
 
 export default function BuyerCatalog() {
   const {
@@ -85,10 +132,10 @@ export default function BuyerCatalog() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-4 sm:space-y-8 pb-16">
       
-      {/* Bright Hero Section with AI Parallax Background Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-slate-900 border border-indigo-200 p-5 sm:p-12 shadow-2xl min-h-[360px] sm:min-h-[420px] flex items-center">
+      {/* Compact Responsive Hero Section for Mobile & Desktop */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 border border-indigo-200 p-3.5 sm:p-10 shadow-2xl min-h-0 sm:min-h-[380px] flex items-center">
         
         {/* Parallax Background Banner Image */}
         <div 
@@ -100,89 +147,147 @@ export default function BuyerCatalog() {
         />
 
         {/* Ambient Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/60 to-slate-900/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-900/40" />
 
         {/* Content Box */}
-        <div className="relative z-10 max-w-3xl space-y-4 sm:space-y-5 text-white">
-          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-indigo-600/40 text-indigo-200 text-[11px] sm:text-xs font-bold border border-indigo-400/40 backdrop-blur-md shadow-md">
-            <Zap className="w-3.5 h-3.5 text-indigo-300" />
-            <span>AI Parallax Background • Multi-Vendor B2B Marketplace</span>
+        <div className="relative z-10 max-w-3xl space-y-2 sm:space-y-5 text-white">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-indigo-600/40 text-indigo-200 text-[9px] sm:text-xs font-bold border border-indigo-400/40 backdrop-blur-md shadow-md">
+              <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-300" />
+              <span>{approvedProducts.length}+ Products</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-emerald-600/40 text-emerald-200 text-[9px] sm:text-xs font-bold border border-emerald-400/40 backdrop-blur-md shadow-md">
+              <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" />
+              <span>Verified Wholesalers</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-slate-800/60 text-slate-200 text-[9px] sm:text-xs font-bold border border-slate-700/60 backdrop-blur-md shadow-md hidden sm:inline-flex">
+              <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-300" />
+              <span>Multi-Vendor B2B Marketplace</span>
+            </span>
           </div>
 
-          <h1 className="text-2xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
+          <h1 className="text-base sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
             Direct Wholesale & <span className="text-teal-300">Industrial Product Sourcing</span>
           </h1>
 
-          <p className="text-slate-100 text-xs sm:text-base leading-relaxed font-medium drop-shadow">
+          <p className="text-slate-100 text-[10px] sm:text-base leading-snug sm:leading-relaxed font-medium drop-shadow line-clamp-1 sm:line-clamp-none">
             Source medical disposables, syringes, industrial machinery, and agricultural produce directly from verified suppliers in Nepal & India.
           </p>
 
-          {/* Clean WhatsApp Logo Icon Button */}
-          <div className="pt-1">
+          {/* Compact WhatsApp Logo Icon Button */}
+          <div className="pt-0.5 flex items-center gap-2">
             <button
               onClick={(e) => handleWhatsAppClick(e, null)}
-              className="p-3 sm:p-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-950/60 border border-emerald-300/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+              className="px-3 py-1.5 sm:px-4 sm:py-3.5 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-950/60 border border-emerald-300/40 flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95 text-[11px] sm:text-xs font-bold"
               title="Chat on WhatsApp"
             >
               {/* WhatsApp SVG Logo */}
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 fill-current" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-6 sm:h-6 fill-current" viewBox="0 0 24 24">
                 <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
               </svg>
+              <span>Direct WhatsApp Sourcing</span>
             </button>
-          </div>
-
-          {/* Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 pt-2">
-            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-lg sm:text-2xl font-extrabold text-white">{approvedProducts.length}+</p>
-              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">Approved Products</p>
-            </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-lg sm:text-2xl font-extrabold text-emerald-400">100%</p>
-              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">Verified Wholesalers</p>
-            </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-lg sm:text-2xl font-extrabold text-indigo-300">Direct</p>
-              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">WhatsApp Leads</p>
-            </div>
-            <div className="bg-slate-900/80 backdrop-blur-md p-2.5 sm:p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-              <p className="text-lg sm:text-2xl font-extrabold text-purple-300">Parallax</p>
-              <p className="text-[9px] sm:text-xs text-slate-300 font-medium">AI Banner Active</p>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Category Pills Filter */}
-      <section className="space-y-3">
+      {/* Visual Category Cards Section */}
+      <section className="space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-800 font-bold text-sm sm:text-base">
-            <Filter className="w-4 h-4 text-indigo-600" />
+          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-900 font-extrabold text-sm sm:text-xl">
+            <Grid className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
             <span>Product Categories</span>
           </div>
-          <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
-            Showing {filteredProducts.length} approved products
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-indigo-100 flex items-center gap-1">
+              <span>Slide Cards</span> &rarr;
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {PRESET_CATEGORIES.map(cat => {
-            const isActive = selectedCategory === cat;
+        {/* Category Visual Cards Single-Row Slider */}
+        <div className="flex items-center gap-2.5 sm:gap-4 overflow-x-auto pb-2 sm:pb-3 pt-0.5 scrollbar-none snap-x snap-mandatory scroll-smooth">
+          {CATEGORY_CARDS_DATA.map(cat => {
+            const isActive = selectedCategory === cat.name;
+            const count = cat.name === 'All Categories'
+              ? approvedProducts.length
+              : approvedProducts.filter(p => p.category === cat.name).length;
+
             return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
+              <div
+                key={cat.name}
+                onClick={() => setSelectedCategory(cat.name)}
+                className={`group/card shrink-0 w-36 sm:w-60 h-24 sm:h-36 rounded-xl sm:rounded-3xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shadow-sm snap-start relative ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
+                    ? 'border-indigo-600 ring-2 sm:ring-4 ring-indigo-500/30 scale-[1.02] shadow-indigo-500/20'
+                    : 'border-white/80 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-0.5'
                 }`}
               >
-                {cat}
-              </button>
+                {/* Background Image */}
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700 ease-out"
+                />
+
+                {/* Gradient Overlays */}
+                <div className={`absolute inset-0 transition-opacity duration-300 ${
+                  isActive 
+                    ? 'bg-gradient-to-t from-slate-950/95 via-indigo-950/80 to-indigo-900/40' 
+                    : 'bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-slate-900/20 group-hover/card:from-slate-950/95'
+                }`} />
+
+                {/* Active Indicator Badge */}
+                {isActive && (
+                  <div className="absolute top-2 right-2 bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-indigo-400">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                    <span>Active</span>
+                  </div>
+                )}
+
+                {/* Product Count Pill */}
+                <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold border border-white/20">
+                  {count} {count === 1 ? 'Product' : 'Products'}
+                </div>
+
+                {/* Card Bottom Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white space-y-0.5">
+                  <h3 className="font-extrabold text-xs sm:text-base leading-tight group-hover/card:text-indigo-300 transition-colors drop-shadow">
+                    {cat.name}
+                  </h3>
+                  <p className="text-[9px] sm:text-xs text-slate-300 font-medium line-clamp-1 opacity-90">
+                    {cat.subtitle}
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>
+
+        {/* Selected Category Status & Reset Banner */}
+        {selectedCategory !== 'All Categories' && (
+          <div className="p-3 sm:p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs text-indigo-900 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500">Filtered by:</span>
+              <span className="font-extrabold text-indigo-700 bg-white px-3 py-1 rounded-xl border border-indigo-200 shadow-sm flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+                {selectedCategory}
+              </span>
+              <span className="text-slate-500 font-semibold hidden sm:inline">
+                ({filteredProducts.length} approved product{filteredProducts.length !== 1 ? 's' : ''} found)
+              </span>
+            </div>
+
+            <button
+              onClick={() => setSelectedCategory('All Categories')}
+              className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1 transition-all text-xs shrink-0"
+            >
+              <X className="w-3.5 h-3.5 text-slate-400" /> Show All Categories
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Forced Mobile 2-Column Grid via .mobile-2col-grid class */}

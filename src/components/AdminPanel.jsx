@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import EditProductModal from './EditProductModal';
 import {
@@ -24,7 +24,14 @@ import {
   FileSpreadsheet,
   Plus,
   X,
-  Filter
+  Filter,
+  Search,
+  Award,
+  ShoppingBag,
+  PieChart,
+  ArrowUpRight,
+  Download,
+  Layers
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -46,10 +53,12 @@ export default function AdminPanel() {
     showToast
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState('journal'); // 'overview' | 'journal' | 'sellers' | 'buyers' | 'products' | 'inquiries' | 'sql'
+  const [activeTab, setActiveTab] = useState('company-analytics'); // 'company-analytics' | 'journal' | 'overview' | 'sellers' | 'buyers' | 'products' | 'inquiries' | 'sql'
   const [sqlCopied, setSqlCopied] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedSellerFilter, setSelectedSellerFilter] = useState('All Sellers');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
+  const [companyAnalyticsFilter, setCompanyAnalyticsFilter] = useState('All Sellers');
 
   // New Journal Entry Modal State
   const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
@@ -82,6 +91,140 @@ export default function AdminPanel() {
   // Total Realized Sales Revenue from Journal
   const totalRealizedSales = safeJournal.reduce((acc, j) => acc + (Number(j?.totalAmount) || 0), 0);
   const totalUnitsSold = safeJournal.reduce((acc, j) => acc + (Number(j?.quantity) || 0), 0);
+
+  // Comprehensive Company Product Sales Aggregates
+  const companyAnalyticsData = useMemo(() => {
+    const companyMap = {};
+
+    // 1. First register all sellers directory
+    safeSellers.forEach(s => {
+      companyMap[s.companyName] = {
+        companyId: s.id,
+        companyName: s.companyName,
+        contactPerson: s.contactPerson,
+        phone: s.phone,
+        location: s.location,
+        status: s.status,
+        category: s.category,
+        totalRevenue: 0,
+        totalUnits: 0,
+        totalOrders: 0,
+        productsMap: {}
+      };
+    });
+
+    // 2. Aggregate every sales journal entry into respective seller company
+    safeJournal.forEach(j => {
+      const compName = j.sellerName || 'Other Registered Company';
+      if (!companyMap[compName]) {
+        companyMap[compName] = {
+          companyId: j.sellerId || 'seller-gen',
+          companyName: compName,
+          contactPerson: 'Verified Trade Partner',
+          phone: '',
+          location: 'Nepal / India',
+          status: 'Verified',
+          category: j.category || 'Wholesale Trade',
+          totalRevenue: 0,
+          totalUnits: 0,
+          totalOrders: 0,
+          productsMap: {}
+        };
+      }
+
+      const comp = companyMap[compName];
+      const rev = Number(j.totalAmount) || 0;
+      const qty = Number(j.quantity) || 0;
+
+      comp.totalRevenue += rev;
+      comp.totalUnits += qty;
+      comp.totalOrders += 1;
+
+      const pName = j.productName || 'Wholesale Product';
+      if (!comp.productsMap[pName]) {
+        comp.productsMap[pName] = {
+          productName: pName,
+          category: j.category || 'General',
+          totalQty: 0,
+          unit: j.unit || 'Pcs',
+          pricePerUnit: Number(j.pricePerUnit) || 0,
+          totalRevenue: 0,
+          ordersCount: 0,
+          lastSaleDate: j.date
+        };
+      }
+
+      comp.productsMap[pName].totalQty += qty;
+      comp.productsMap[pName].totalRevenue += rev;
+      comp.productsMap[pName].ordersCount += 1;
+      if (j.date && j.date > comp.productsMap[pName].lastSaleDate) {
+        comp.productsMap[pName].lastSaleDate = j.date;
+      }
+    });
+
+    const result = Object.values(companyMap).map(comp => {
+      const productsList = Object.values(comp.productsMap).map(prod => ({
+        ...prod,
+        revenueSharePct: comp.totalRevenue > 0 ? ((prod.totalRevenue / comp.totalRevenue) * 100).toFixed(1) : 0
+      }));
+      // Sort product list by revenue descending
+      productsList.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      return {
+        ...comp,
+        productsList
+      };
+    });
+
+    // Sort companies by total revenue descending
+    result.sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return result;
+  }, [safeSellers, safeJournal]);
+
+  // Key Analytics Metrics
+  const topCompany = companyAnalyticsData.length > 0 ? companyAnalyticsData[0] : null;
+
+  const allProductsFlat = useMemo(() => {
+    const pMap = {};
+    companyAnalyticsData.forEach(comp => {
+      comp.productsList.forEach(prod => {
+        if (!pMap[prod.productName]) {
+          pMap[prod.productName] = {
+            productName: prod.productName,
+            category: prod.category,
+            companyName: comp.companyName,
+            totalQty: 0,
+            unit: prod.unit,
+            totalRevenue: 0,
+            ordersCount: 0
+          };
+        }
+        pMap[prod.productName].totalQty += prod.totalQty;
+        pMap[prod.productName].totalRevenue += prod.totalRevenue;
+        pMap[prod.productName].ordersCount += prod.ordersCount;
+      });
+    });
+    return Object.values(pMap).sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [companyAnalyticsData]);
+
+  const topProductOverall = allProductsFlat.length > 0 ? allProductsFlat[0] : null;
+
+  // Filtered Company Analytics list for search/filter UI
+  const filteredCompanyAnalytics = useMemo(() => {
+    return companyAnalyticsData.filter(comp => {
+      const matchesFilter = companyAnalyticsFilter === 'All Sellers' || comp.companyName === companyAnalyticsFilter;
+      if (!matchesFilter) return false;
+
+      if (!companySearchQuery.trim()) return true;
+
+      const q = companySearchQuery.toLowerCase();
+      const matchesCompName = comp.companyName.toLowerCase().includes(q);
+      const matchesContact = comp.contactPerson.toLowerCase().includes(q);
+      const matchesProduct = comp.productsList.some(p => p.productName.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+
+      return matchesCompName || matchesContact || matchesProduct;
+    });
+  }, [companyAnalyticsData, companyAnalyticsFilter, companySearchQuery]);
 
   // Per-Seller Aggregates Calculation (Pata chalega kiss seller ka kitna product & rupee sell hua hai)
   const sellerSalesAggregates = safeSellers.map(seller => {
@@ -264,6 +407,18 @@ create table sales_journal (
       {/* ERP Sub-Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200 text-xs font-bold">
         <button
+          onClick={() => setActiveTab('company-analytics')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shrink-0 ${
+            activeTab === 'company-analytics'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <PieChart className="w-4 h-4 text-amber-300" />
+          <span>Company Product Sales ({companyAnalyticsData.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('journal')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shrink-0 ${
             activeTab === 'journal'
@@ -352,6 +507,305 @@ create table sales_journal (
           <span>Supabase SQL</span>
         </button>
       </div>
+
+      {/* 0. COMPANY & PRODUCT SALES ANALYTICS (किस COMPANY का कौन सा PRODUCT कितना SELL हुआ) */}
+      {activeTab === 'company-analytics' && (
+        <div className="space-y-8">
+          
+          {/* Top Analytics Executive KPI Highlight Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Top Seller Company Card */}
+            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-3xl border border-indigo-700/40 shadow-xl space-y-3 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider border border-amber-400/30 flex items-center gap-1">
+                  <Award className="w-3.5 h-3.5 text-amber-400" /> Top Selling Company
+                </span>
+                <Building2 className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-xl font-extrabold text-white truncate">{topCompany ? topCompany.companyName : 'N/A'}</p>
+                <p className="text-2xl font-black text-emerald-400 mt-1">
+                  Rs. {formatPrice(topCompany ? topCompany.totalRevenue : 0)}
+                </p>
+              </div>
+              <p className="text-xs text-indigo-200/80 font-medium flex items-center gap-1 pt-1 border-t border-indigo-800/60">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                {topCompany ? topCompany.totalOrders : 0} Trades Completed ({topCompany ? topCompany.productsList.length : 0} Products)
+              </p>
+            </div>
+
+            {/* Top Product Overall Card */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                  <ShoppingBag className="w-3.5 h-3.5 text-purple-600" /> Best Selling Product
+                </span>
+                <Package className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-slate-900 truncate">{topProductOverall ? topProductOverall.productName : 'N/A'}</p>
+                <p className="text-xs text-indigo-600 font-bold truncate">By: {topProductOverall ? topProductOverall.companyName : 'N/A'}</p>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                <span className="font-bold text-slate-700">{topProductOverall ? topProductOverall.totalQty : 0} {topProductOverall?.unit || 'Units'} Sold</span>
+                <span className="font-extrabold text-emerald-600">Rs. {formatPrice(topProductOverall ? topProductOverall.totalRevenue : 0)}</span>
+              </div>
+            </div>
+
+            {/* Unique Products Sold Count Card */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Unique Products Sold</span>
+                <Layers className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-slate-900">{allProductsFlat.length}</p>
+                <p className="text-xs text-slate-500 font-medium font-serif">Catalog items with trade entries</p>
+              </div>
+              <div className="text-xs text-emerald-600 font-bold pt-1 border-t border-slate-100 flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5" /> High Demand Catalog Items
+              </div>
+            </div>
+
+            {/* Total Platform Realized Revenue Card */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Realized Revenue</span>
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-3xl font-extrabold text-emerald-600">Rs. {formatPrice(totalRealizedSales)}</p>
+                <p className="text-xs text-slate-500 font-medium">Across {companyAnalyticsData.length} active sellers</p>
+              </div>
+              <div className="text-xs text-purple-600 font-bold pt-1 border-t border-slate-100 flex items-center justify-between">
+                <span>{totalUnitsSold.toLocaleString()} Total Units</span>
+                <span className="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">{safeJournal.length} Trades</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Search, Filter & Record Action Header */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                  <PieChart className="w-5 h-5 text-purple-600" />
+                  Company Product Sales Breakdown (किस Company का कौन सा Product कितना Sell हुआ)
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Detailed product-wise sales revenue, quantity sold, and revenue contribution per seller company.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsJournalModalOpen(true)}
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/20 flex items-center gap-2 shrink-0 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Record New Company Sale</span>
+              </button>
+            </div>
+
+            {/* Filter controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+              
+              {/* Search Bar */}
+              <div className="sm:col-span-2 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search by company name, contact person, product name, or category..."
+                  value={companySearchQuery}
+                  onChange={(e) => setCompanySearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400 font-medium"
+                />
+                {companySearchQuery && (
+                  <button
+                    onClick={() => setCompanySearchQuery('')}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Seller Filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+                <select
+                  value={companyAnalyticsFilter}
+                  onChange={(e) => setCompanyAnalyticsFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 shadow-sm"
+                >
+                  <option value="All Sellers">All Companies Overview</option>
+                  {companyAnalyticsData.map(c => (
+                    <option key={c.companyId || c.companyName} value={c.companyName}>
+                      {c.companyName} (Rs. {formatPrice(c.totalRevenue)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Companies List with Per-Product Breakdown Tables */}
+          <div className="space-y-6">
+            {filteredCompanyAnalytics.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
+                <Store className="w-12 h-12 text-slate-300 mx-auto" />
+                <h4 className="font-bold text-slate-700 text-base">No Matching Company Sales Data Found</h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  No company or product matches your search query "{companySearchQuery}". Try clearing your search filter.
+                </p>
+                <button
+                  onClick={() => { setCompanySearchQuery(''); setCompanyAnalyticsFilter('All Sellers'); }}
+                  className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            ) : (
+              filteredCompanyAnalytics.map(comp => (
+                <div key={comp.companyId || comp.companyName} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4">
+                  
+                  {/* Company Card Header Banner */}
+                  <div className="p-6 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 text-[10px] font-extrabold uppercase border border-indigo-400/30 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-indigo-400" />
+                          {comp.category || 'Manufacturer / Wholesaler'}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold border border-emerald-400/30 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          {comp.status || 'Verified Partner'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-xl font-extrabold text-white flex items-center gap-2">
+                        {comp.companyName}
+                      </h4>
+
+                      <p className="text-xs text-slate-300 font-medium">
+                        Contact Person: <span className="text-white font-semibold">{comp.contactPerson}</span>
+                        {comp.phone && <span> • Phone: +{comp.phone}</span>}
+                        {comp.location && <span> • Location: {comp.location}</span>}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-700 text-right">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Total Sales Volume</p>
+                        <p className="text-xl font-black text-emerald-400">Rs. {formatPrice(comp.totalRevenue)}</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setNewJournal(prev => ({ ...prev, sellerName: comp.companyName, sellerId: comp.companyId }));
+                          setIsJournalModalOpen(true);
+                        }}
+                        className="px-3.5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition-all"
+                        title="Record sale for this specific company"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Record Sale</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Company Summary Bar */}
+                  <div className="px-6 py-3 bg-slate-50 border-y border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
+                    <div className="flex items-center gap-4">
+                      <span>Total Completed Orders: <strong className="text-slate-900 font-extrabold">{comp.totalOrders} Trades</strong></span>
+                      <span>Total Volume Sold: <strong className="text-slate-900 font-extrabold">{comp.totalUnits.toLocaleString()} Units</strong></span>
+                      <span>Unique Products Sold: <strong className="text-indigo-600 font-extrabold">{comp.productsList.length} Items</strong></span>
+                    </div>
+
+                    <span className="text-[11px] text-slate-400 font-semibold italic">Sorted by highest revenue product</span>
+                  </div>
+
+                  {/* Products Sold Table (किस Product का कितना Sale हुआ) */}
+                  <div className="px-6 pb-6 pt-2">
+                    <p className="text-xs uppercase tracking-wider font-extrabold text-slate-500 mb-3 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <ShoppingBag className="w-4 h-4 text-indigo-600" />
+                        Products Sold Breakdown (किस Product का कितना Quantity & Amount Sell हुआ):
+                      </span>
+                    </p>
+
+                    {comp.productsList.length === 0 ? (
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center text-xs text-slate-400 italic">
+                        No trade transaction entries recorded yet for this company. Use "Record Sale" button above to log orders.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-100 text-[11px] uppercase tracking-wider font-bold text-slate-600 border-b border-slate-200">
+                              <th className="py-3.5 px-4">Product Name & Category</th>
+                              <th className="py-3.5 px-4 text-center">Total Quantity Sold</th>
+                              <th className="py-3.5 px-4 text-right">Unit Price (Rs.)</th>
+                              <th className="py-3.5 px-4 text-right">Total Revenue (Rs.)</th>
+                              <th className="py-3.5 px-4">Sales Revenue Share (%)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {comp.productsList.map((prod, pIdx) => (
+                              <tr key={pIdx} className="hover:bg-indigo-50/40 transition-colors">
+                                <td className="py-3.5 px-4">
+                                  <p className="font-extrabold text-slate-900">{prod.productName}</p>
+                                  <span className="inline-block mt-0.5 px-2 py-0.2 rounded-md bg-slate-100 text-indigo-700 text-[10px] font-bold">
+                                    {prod.category}
+                                  </span>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-center font-bold text-slate-800">
+                                  <span className="px-2.5 py-1 bg-slate-100 rounded-xl text-slate-900">
+                                    {prod.totalQty.toLocaleString()} {prod.unit}
+                                  </span>
+                                  <p className="text-[10px] text-slate-400 font-medium mt-1">{prod.ordersCount} trade order(s)</p>
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right font-semibold text-slate-600">
+                                  Rs. {formatPrice(prod.pricePerUnit)}
+                                </td>
+
+                                <td className="py-3.5 px-4 text-right font-black text-emerald-600 text-sm">
+                                  Rs. {formatPrice(prod.totalRevenue)}
+                                </td>
+
+                                <td className="py-3.5 px-4 min-w-[180px]">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="font-extrabold text-slate-800">{prod.revenueSharePct}%</span>
+                                      <span className="text-[10px] text-slate-400 font-semibold">of company total</span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                      <div
+                                        className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min(100, Math.max(5, prod.revenueSharePct))}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              ))
+            )}
+          </div>
+
+        </div>
+      )}
 
       {/* 1. SELLER SALES JOURNAL & TRADE LEDGER (NEW COMPREHENSIVE SUB-MODULE) */}
       {activeTab === 'journal' && (
