@@ -3,13 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 const STORAGE_KEY_CONFIG = 'wsnepal_supabase_config';
 const STORAGE_KEY_PRODUCTS = 'wsnepal_mock_products';
 
+export const DEFAULT_SUPABASE_PROJECT = 'wsnepal';
+export const DEFAULT_SUPABASE_URL = 'https://vbklvftgawigfwxomlie.supabase.co';
+export const DEFAULT_SUPABASE_KEY = 'sb_publishable_yfbqpT1EFZ9mX9nCL0a76A_RTlzsx0J';
+
 export const getStoredConfig = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_CONFIG);
-    return data ? JSON.parse(data) : { url: '', key: '' };
-  } catch (e) {
-    return { url: '', key: '' };
-  }
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed && parsed.url && parsed.key) return parsed;
+    }
+  } catch (e) {}
+  return {
+    url: (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || DEFAULT_SUPABASE_URL,
+    key: (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || DEFAULT_SUPABASE_KEY
+  };
 };
 
 export const saveStoredConfig = (config) => {
@@ -166,9 +175,12 @@ export const saveStoredProducts = (products) => {
 
 export const getSupabaseClient = () => {
   const { url, key } = getStoredConfig();
-  if (url && key && url.startsWith('http')) {
+  const validUrl = url || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || DEFAULT_SUPABASE_URL;
+  const validKey = key || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || DEFAULT_SUPABASE_KEY;
+
+  if (validUrl && validKey && validUrl.startsWith('http')) {
     try {
-      return createClient(url, key);
+      return createClient(validUrl, validKey);
     } catch (err) {
       console.warn('Supabase initialization failed:', err);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Database, CheckCircle2, Key, Link2, RefreshCw } from 'lucide-react';
+import { X, Database, CheckCircle2, Key, Link2, RefreshCw, Zap } from 'lucide-react';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY, DEFAULT_SUPABASE_PROJECT } from '../lib/supabase';
 
 export default function SupabaseSettingsModal() {
   const {
@@ -12,8 +13,8 @@ export default function SupabaseSettingsModal() {
     showToast
   } = useApp();
 
-  const [url, setUrl] = useState(supabaseConfig.url || '');
-  const [key, setKey] = useState(supabaseConfig.key || '');
+  const [url, setUrl] = useState(supabaseConfig.url || DEFAULT_SUPABASE_URL);
+  const [key, setKey] = useState(supabaseConfig.key || DEFAULT_SUPABASE_KEY);
 
   if (!isConfigModalOpen) return null;
 
@@ -35,8 +36,8 @@ export default function SupabaseSettingsModal() {
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-lg">Supabase Backend Configuration</h3>
-              <p className="text-xs text-slate-500">Documentation Step 1 & 3 Backend Integration</p>
+              <h3 className="font-bold text-slate-900 text-lg">Supabase Backend Integration</h3>
+              <p className="text-xs text-slate-500">Live PostgreSQL Database Connected • Project: {DEFAULT_SUPABASE_PROJECT}</p>
             </div>
           </div>
 
@@ -53,14 +54,14 @@ export default function SupabaseSettingsModal() {
           
           <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
             <div className="flex items-center gap-2 text-emerald-800 font-bold">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Hybrid Client-Side Fallback Active</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Live Supabase Credentials Configured ({DEFAULT_SUPABASE_PROJECT})</span>
             </div>
             <p className="text-slate-700 leading-relaxed">
-              This application works instantly using <strong>Client-Side Local Storage Seed Mode</strong> so you can test all features (Buyer Catalog, WhatsApp Link Generator, Seller RLS isolation, and Admin Approvals) without configuring API keys first.
+              Active Supabase URL: <code className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px] text-emerald-900">{DEFAULT_SUPABASE_URL}</code>
             </p>
-            <p className="text-slate-500">
-              Enter your live Supabase credentials below anytime to connect your remote PostgreSQL database.
+            <p className="text-slate-600">
+              Public Anon API Key: <code className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono text-[10px] text-emerald-900 truncate block max-w-full">{DEFAULT_SUPABASE_KEY}</code>
             </p>
           </div>
 
