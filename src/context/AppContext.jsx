@@ -249,6 +249,22 @@ export const AppProvider = ({ children }) => {
     showToast('Logged out successfully.', 'info');
   };
 
+  // Full Account & Personal Data Purge Action (GDPR / Data Privacy Compliance)
+  const deleteMyAccount = () => {
+    if (!userProfile) return;
+    const userId = userProfile.id;
+    if (userProfile.role === 'seller') {
+      deleteSeller(userId);
+    } else if (userProfile.role === 'buyer') {
+      deleteBuyer(userId);
+    }
+    setUserProfile(null);
+    setRole('buyer');
+    setActiveNav('catalog');
+    localStorage.removeItem(STORAGE_KEY_AUTH);
+    showToast('Your account & personal data have been purged from ERP & Supabase.', 'info');
+  };
+
   // ERP Actions: Sellers & Buyers management with Real-time Supabase Persistence
   const verifySeller = (sellerId) => {
     let targetSeller = null;
@@ -494,6 +510,7 @@ export const AppProvider = ({ children }) => {
       loginUser,
       registerUser,
       logoutUser,
+      deleteMyAccount,
       sellers,
       buyers,
       inquiries,

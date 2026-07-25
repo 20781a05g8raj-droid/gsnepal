@@ -385,9 +385,9 @@ export const upsertSupabaseProduct = async (product) => {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('products').upsert(product);
-    if (error) console.error('Supabase Product Sync Error:', error);
+    if (error) console.error('Supabase Product Sync Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase product save exception:', e);
+    console.warn('Supabase product save exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -396,9 +396,9 @@ export const deleteSupabaseProduct = async (id) => {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) console.error('Supabase Product Delete Error:', error);
+    if (error) console.error('Supabase Product Delete Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase product delete exception:', e);
+    console.warn('Supabase product delete exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -408,9 +408,9 @@ export const upsertSupabaseSeller = async (seller) => {
   try {
     const dbPayload = mapSellerToDb(seller);
     const { error } = await supabase.from('sellers').upsert(dbPayload);
-    if (error) console.error('Supabase Seller Sync Error:', error);
+    if (error) console.error('Supabase Seller Sync Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase seller save exception:', e);
+    console.warn('Supabase seller save exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -419,9 +419,9 @@ export const deleteSupabaseSeller = async (id) => {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('sellers').delete().eq('id', id);
-    if (error) console.error('Supabase Seller Delete Error:', error);
+    if (error) console.error('Supabase Seller Delete Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase seller delete exception:', e);
+    console.warn('Supabase seller delete exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -431,9 +431,9 @@ export const upsertSupabaseBuyer = async (buyer) => {
   try {
     const dbPayload = mapBuyerToDb(buyer);
     const { error } = await supabase.from('buyers').upsert(dbPayload);
-    if (error) console.error('Supabase Buyer Sync Error:', error);
+    if (error) console.error('Supabase Buyer Sync Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase buyer save exception:', e);
+    console.warn('Supabase buyer save exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -442,9 +442,9 @@ export const deleteSupabaseBuyer = async (id) => {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('buyers').delete().eq('id', id);
-    if (error) console.error('Supabase Buyer Delete Error:', error);
+    if (error) console.error('Supabase Buyer Delete Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase buyer delete exception:', e);
+    console.warn('Supabase buyer delete exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -454,9 +454,9 @@ export const upsertSupabaseSalesJournal = async (journalEntry) => {
   try {
     const dbPayload = mapJournalToDb(journalEntry);
     const { error } = await supabase.from('sales_journal').upsert(dbPayload);
-    if (error) console.error('Supabase Sales Journal Sync Error:', error);
+    if (error) console.error('Supabase Sales Journal Sync Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase journal save exception:', e);
+    console.warn('Supabase journal save exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -465,9 +465,9 @@ export const deleteSupabaseSalesJournal = async (id) => {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('sales_journal').delete().eq('id', id);
-    if (error) console.error('Supabase Sales Journal Delete Error:', error);
+    if (error) console.error('Supabase Sales Journal Delete Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase journal delete exception:', e);
+    console.warn('Supabase journal delete exception:', e.message || '[REDACTED_ERROR]');
   }
 };
 
@@ -477,8 +477,8 @@ export const upsertSupabaseInquiry = async (inquiry) => {
   try {
     const dbPayload = mapInquiryToDb(inquiry);
     const { error } = await supabase.from('inquiries').upsert(dbPayload);
-    if (error) console.error('Supabase Inquiry Sync Error:', error);
+    if (error) console.error('Supabase Inquiry Sync Error:', error.message || '[REDACTED_ERROR]');
   } catch (e) {
-    console.warn('Supabase inquiry save exception:', e);
+    console.warn('Supabase inquiry save exception:', e.message || '[REDACTED_ERROR]');
   }
 };

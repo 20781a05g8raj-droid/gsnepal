@@ -7,6 +7,7 @@ import {
   Database,
   User,
   LogOut,
+  Trash2,
   BookOpen,
   ShoppingBag,
   ShieldCheck
@@ -18,6 +19,7 @@ export default function Navbar() {
     setActiveNav,
     userProfile,
     logoutUser,
+    deleteMyAccount,
     products,
     searchQuery,
     setSearchQuery,
@@ -163,10 +165,22 @@ export default function Navbar() {
 
                 <button
                   onClick={logoutUser}
-                  className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-white transition-colors"
+                  className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-white transition-colors"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to delete your account? This will permanently delete and anonymize all your personal data from ERP & Supabase database.")) {
+                      deleteMyAccount();
+                    }
+                  }}
+                  className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  title="Delete Account & Purge PII Data"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             ) : (
