@@ -4,8 +4,8 @@ const STORAGE_KEY_CONFIG = 'wsnepal_supabase_config';
 const STORAGE_KEY_PRODUCTS = 'wsnepal_mock_products';
 
 export const DEFAULT_SUPABASE_PROJECT = 'wsnepal';
-export const DEFAULT_SUPABASE_URL = 'https://vbklvftgawigfwxomlie.supabase.co';
-export const DEFAULT_SUPABASE_KEY = 'sb_publishable_yfbqpT1EFZ9mX9nCL0a76A_RTlzsx0J';
+export const DEFAULT_SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || '';
+export const DEFAULT_SUPABASE_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || '';
 
 export const getStoredConfig = () => {
   try {
@@ -16,8 +16,8 @@ export const getStoredConfig = () => {
     }
   } catch (e) {}
   return {
-    url: (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || DEFAULT_SUPABASE_URL,
-    key: (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || DEFAULT_SUPABASE_KEY
+    url: DEFAULT_SUPABASE_URL,
+    key: DEFAULT_SUPABASE_KEY
   };
 };
 
@@ -175,14 +175,14 @@ export const saveStoredProducts = (products) => {
 
 export const getSupabaseClient = () => {
   const { url, key } = getStoredConfig();
-  const validUrl = url || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || DEFAULT_SUPABASE_URL;
-  const validKey = key || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || DEFAULT_SUPABASE_KEY;
+  const validUrl = url || DEFAULT_SUPABASE_URL;
+  const validKey = key || DEFAULT_SUPABASE_KEY;
 
   if (validUrl && validKey && validUrl.startsWith('http')) {
     try {
       return createClient(validUrl, validKey);
     } catch (err) {
-      console.warn('Supabase initialization failed:', err);
+      console.warn('Supabase client creation issue:', err.message || err);
     }
   }
   return null;
