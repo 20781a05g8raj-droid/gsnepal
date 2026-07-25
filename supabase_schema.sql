@@ -1,6 +1,6 @@
 -- =====================================================================
 -- WSNEPAL B2B MARKETPLACE & ERP - COMPLETE SUPABASE POSTGRESQL SCHEMA
--- Includes: Tables, Indexes, Row Level Security (RLS), and Initial Data
+-- Includes: Tables, Views, Indexes, Row Level Security (RLS), and Initial Data
 -- =====================================================================
 
 -- Enable UUID extension
@@ -109,40 +109,77 @@ create table if not exists public.inquiries (
 );
 
 -- ---------------------------------------------------------------------
--- 6. INDEXES FOR HIGH PERFORMANCE QUERYING
+-- 6. COMPANY PRODUCT SALES TABLE & REAL-TIME ANALYTICS VIEW
+-- Stores aggregated sales revenue, units sold, and orders per product per company
+-- ---------------------------------------------------------------------
+create table if not exists public.company_product_sales (
+  id text primary key,
+  seller_id text references public.sellers(id) on delete set null,
+  seller_name text not null,
+  product_name text not null,
+  category text default 'General',
+  total_units_sold numeric(12,2) default 0,
+  unit text default 'Pcs',
+  price_per_unit numeric(12,2) default 0,
+  total_revenue_rs numeric(14,2) default 0,
+  orders_count integer default 0,
+  last_sale_date date default current_date,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Real-Time Analytical View aggregating Sales Journal by Company & Product
+create or replace view public.vw_company_product_sales_analytics as
+select 
+  j.seller_id,
+  j.seller_name,
+  s.contact_person,
+  s.phone as seller_phone,
+  s.location as seller_location,
+  s.status as seller_status,
+  s.admin_rating,
+  s.admin_tag,
+  s.admin_review,
+  j.product_name,
+  j.category,
+  sum(j.quantity) as total_units_sold,
+  max(j.unit) as unit,
+  avg(j.price_per_unit) as avg_price_per_unit,
+  sum(j.total_amount) as total_revenue_rs,
+  count(j.id) as orders_count,
+  max(j.date) as last_sale_date
+from public.sales_journal j
+left join public.sellers s on j.seller_id = s.id
+group by j.seller_id, j.seller_name, s.contact_person, s.phone, s.location, s.status, s.admin_rating, s.admin_tag, s.admin_review, j.product_name, j.category;
+
+-- ---------------------------------------------------------------------
+-- 7. INDEXES FOR HIGH PERFORMANCE QUERYING
 -- ---------------------------------------------------------------------
 create index if not exists idx_products_category on public.products(category);
 create index if not exists idx_products_approved on public.products(is_approved);
 create index if not exists idx_products_seller on public.products(seller_id);
 create index if not exists idx_journal_seller on public.sales_journal(seller_id);
 create index if not exists idx_sellers_status on public.sellers(status);
+create index if not exists idx_cps_seller on public.company_product_sales(seller_id);
 
 -- ---------------------------------------------------------------------
--- 7. ROW LEVEL SECURITY (RLS) POLICIES
+-- 8. ROW LEVEL SECURITY (RLS) POLICIES
 -- ---------------------------------------------------------------------
 alter table public.sellers enable row level security;
 alter table public.buyers enable row level security;
 alter table public.products enable row level security;
 alter table public.sales_journal enable row level security;
 alter table public.inquiries enable row level security;
+alter table public.company_product_sales enable row level security;
 
--- Public Read for Sellers, Buyers, Approved Products, Sales Journal, and Inquiries
-create policy "Allow public read access on approved products" on public.products
-  for select using (is_approved = true or true);
+-- Public Read Policies
+create policy "Allow public read access on approved products" on public.products for select using (true);
+create policy "Allow public read access on sellers" on public.sellers for select using (true);
+create policy "Allow public read access on buyers" on public.buyers for select using (true);
+create policy "Allow public read access on sales journal" on public.sales_journal for select using (true);
+create policy "Allow public read access on inquiries" on public.inquiries for select using (true);
+create policy "Allow public read access on company_product_sales" on public.company_product_sales for select using (true);
 
-create policy "Allow public read access on sellers" on public.sellers
-  for select using (true);
-
-create policy "Allow public read access on buyers" on public.buyers
-  for select using (true);
-
-create policy "Allow public read access on sales journal" on public.sales_journal
-  for select using (true);
-
-create policy "Allow public read access on inquiries" on public.inquiries
-  for select using (true);
-
--- Allow Insert and Update for all users
+-- Insert & Update Policies
 create policy "Allow insert on products" on public.products for insert with check (true);
 create policy "Allow update on products" on public.products for update using (true);
 create policy "Allow insert on sellers" on public.sellers for insert with check (true);
@@ -151,15 +188,18 @@ create policy "Allow insert on buyers" on public.buyers for insert with check (t
 create policy "Allow update on buyers" on public.buyers for update using (true);
 create policy "Allow insert on sales_journal" on public.sales_journal for insert with check (true);
 create policy "Allow insert on inquiries" on public.inquiries for insert with check (true);
+create policy "Allow insert on company_product_sales" on public.company_product_sales for insert with check (true);
+create policy "Allow update on company_product_sales" on public.company_product_sales for update using (true);
 
--- Delete permissions
+-- Delete Policies
 create policy "Allow delete on products" on public.products for delete using (true);
 create policy "Allow delete on sellers" on public.sellers for delete using (true);
 create policy "Allow delete on buyers" on public.buyers for delete using (true);
 create policy "Allow delete on sales_journal" on public.sales_journal for delete using (true);
+create policy "Allow delete on company_product_sales" on public.company_product_sales for delete using (true);
 
 -- ---------------------------------------------------------------------
--- 8. INITIAL SEED DATA INSERTS
+-- 9. INITIAL SEED DATA INSERTS
 -- ---------------------------------------------------------------------
 
 -- Insert Initial Sellers
@@ -203,4 +243,13 @@ values
   ('inq-901', 'Avishek Sharma', 'Disposable Sterile Syringe Luer Lock 5ml', 'MedTech Surgical & Hospital Supplies', '50,000 Pcs', 900000, 'Converted / Direct WhatsApp', '2026-07-22'),
   ('inq-902', 'Ramesh Thapa', 'Automatic Hydraulic Paper Cup Machine 90pcs/min', 'Apex Industrial Machines Pvt Ltd', '1 Set Unit', 485000, 'Quotation Sent', '2026-07-23'),
   ('inq-903', 'Suman Joshi', 'Bulk Organic Large Cardamom Grade A', 'Himalayan Herbal & Spices Export', '200 Kg Bulk', 250000, 'Negotiation Active', '2026-07-23')
+on conflict (id) do nothing;
+
+-- Insert Initial Company Product Sales Aggregates
+insert into public.company_product_sales (id, seller_id, seller_name, product_name, category, total_units_sold, unit, price_per_unit, total_revenue_rs, orders_count, last_sale_date)
+values
+  ('cps-001', 'seller-105', 'MedTech Surgical & Hospital Supplies', 'Disposable Sterile Syringe with Needle', 'Medical & Healthcare', 50000, 'Pcs', 18, 900000, 1, '2026-07-22'),
+  ('cps-002', 'seller-101', 'Apex Industrial Machines Pvt Ltd', 'Automatic Hydraulic Paper Cup Machine', 'Industrial Machinery', 1, 'Set', 485000, 485000, 1, '2026-07-21'),
+  ('cps-003', 'seller-102', 'Himalayan Herbal & Spices Export', 'Bulk Organic Large Cardamom Grade A', 'Agriculture & Food', 250, 'Kg', 1250, 312500, 1, '2026-07-18'),
+  ('cps-004', 'seller-103', 'NextGen Electronics Wholesalers', 'Smart IoT Solar Charge Controller 60A MPPT', 'Electronics & Solar', 50, 'Pcs', 4200, 210000, 1, '2026-07-15')
 on conflict (id) do nothing;

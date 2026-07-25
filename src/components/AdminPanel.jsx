@@ -468,12 +468,52 @@ create table if not exists public.inquiries (
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- 6. COMPANY PRODUCT SALES TABLE & REAL-TIME ANALYTICS VIEW
+create table if not exists public.company_product_sales (
+  id text primary key,
+  seller_id text references public.sellers(id) on delete set null,
+  seller_name text not null,
+  product_name text not null,
+  category text default 'General',
+  total_units_sold numeric(12,2) default 0,
+  unit text default 'Pcs',
+  price_per_unit numeric(12,2) default 0,
+  total_revenue_rs numeric(14,2) default 0,
+  orders_count integer default 0,
+  last_sale_date date default current_date,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create or replace view public.vw_company_product_sales_analytics as
+select 
+  j.seller_id,
+  j.seller_name,
+  s.contact_person,
+  s.phone as seller_phone,
+  s.location as seller_location,
+  s.status as seller_status,
+  s.admin_rating,
+  s.admin_tag,
+  s.admin_review,
+  j.product_name,
+  j.category,
+  sum(j.quantity) as total_units_sold,
+  max(j.unit) as unit,
+  avg(j.price_per_unit) as avg_price_per_unit,
+  sum(j.total_amount) as total_revenue_rs,
+  count(j.id) as orders_count,
+  max(j.date) as last_sale_date
+from public.sales_journal j
+left join public.sellers s on j.seller_id = s.id
+group by j.seller_id, j.seller_name, s.contact_person, s.phone, s.location, s.status, s.admin_rating, s.admin_tag, s.admin_review, j.product_name, j.category;
+
 -- ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
 alter table public.sellers enable row level security;
 alter table public.buyers enable row level security;
 alter table public.products enable row level security;
 alter table public.sales_journal enable row level security;
 alter table public.inquiries enable row level security;
+alter table public.company_product_sales enable row level security;
 
 create policy "Public Read Access" on public.products for select using (true);
 create policy "Public Read Access Sellers" on public.sellers for select using (true);
