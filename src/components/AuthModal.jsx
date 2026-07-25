@@ -524,16 +524,7 @@ export default function AuthModal() {
                 </div>
               </div>
 
-              {/* Secret Admin Credentials Notice */}
-              <div className="p-3 bg-purple-50 rounded-2xl border border-purple-200 text-[11px] text-purple-900 font-medium space-y-1">
-                <div className="flex items-center gap-1 font-bold text-purple-900">
-                  <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>Admin Authentication</span>
-                </div>
-                <p className="text-purple-700 leading-snug">
-                  Admin login requires Secret Email <code className="font-bold bg-purple-100 px-1 py-0.5 rounded text-purple-900">admin@wsnepal.com</code> and Secret Password configured in <code className="font-bold bg-purple-100 px-1 py-0.5 rounded text-purple-900">.env</code>.
-                </p>
-              </div>
+
 
               <button
                 type="submit"
