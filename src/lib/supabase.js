@@ -191,19 +191,19 @@ export const getSupabaseClient = () => {
 // Data Mapper Utilities for Supabase <-> JS
 export const mapSellerToDb = (s) => ({
   id: s.id,
-  company_name: s.companyName,
-  contact_person: s.contactPerson,
-  email: s.email,
+  company_name: s.companyName || 'Wholesaler Firm',
+  contact_person: s.contactPerson || '',
+  email: s.email || '',
   phone: s.phone || DEFAULT_WHATSAPP_NUMBER,
-  location: s.location,
-  pan_gst: s.panGst,
-  category: s.category,
-  status: s.status,
+  location: s.location || 'Nepal',
+  pan_gst: s.panGst || 'N/A',
+  category: s.category || 'General Wholesaler',
+  status: s.status || 'Verified',
   total_products: s.totalProducts || 0,
   joined_date: s.joinedDate || new Date().toISOString().split('T')[0],
-  admin_rating: s.adminRating || 5,
-  admin_tag: s.adminTag || 'Verified Supplier',
-  admin_review: s.adminReview || '',
+  admin_rating: s.adminRating !== undefined ? Number(s.adminRating) : 5,
+  admin_tag: s.adminTag !== undefined ? s.adminTag : 'Verified Supplier',
+  admin_review: s.adminReview !== undefined ? s.adminReview : '',
   admin_review_updated_at: s.adminReviewUpdatedAt || new Date().toISOString().split('T')[0]
 });
 
@@ -219,24 +219,24 @@ export const mapSellerFromDb = (d) => ({
   status: d.status,
   totalProducts: d.total_products,
   joinedDate: d.joined_date,
-  adminRating: d.admin_rating,
-  adminTag: d.admin_tag,
-  adminReview: d.admin_review,
+  adminRating: Number(d.admin_rating) || 5,
+  adminTag: d.admin_tag || 'Verified Supplier',
+  adminReview: d.admin_review || '',
   adminReviewUpdatedAt: d.admin_review_updated_at
 });
 
 export const mapBuyerToDb = (b) => ({
   id: b.id,
-  name: b.name,
-  email: b.email,
+  name: b.name || 'Buyer',
+  email: b.email || '',
   phone: b.phone || DEFAULT_WHATSAPP_NUMBER,
-  location: b.location,
-  interest: b.interest,
+  location: b.location || 'Nepal',
+  interest: b.interest || 'General Sourcing',
   inquiries_sent: b.inquiriesSent || 0,
   joined_date: b.joinedDate || new Date().toISOString().split('T')[0],
-  admin_rating: b.adminRating || 5,
-  admin_tag: b.adminTag || 'Genuine & Active Buyer',
-  admin_review: b.adminReview || '',
+  admin_rating: b.adminRating !== undefined ? Number(b.adminRating) : 5,
+  admin_tag: b.adminTag !== undefined ? b.adminTag : 'Genuine & Active Buyer',
+  admin_review: b.adminReview !== undefined ? b.adminReview : '',
   admin_review_updated_at: b.adminReviewUpdatedAt || new Date().toISOString().split('T')[0]
 });
 
@@ -249,9 +249,9 @@ export const mapBuyerFromDb = (d) => ({
   interest: d.interest,
   inquiriesSent: d.inquiries_sent,
   joinedDate: d.joined_date,
-  adminRating: d.admin_rating,
-  adminTag: d.admin_tag,
-  adminReview: d.admin_review,
+  adminRating: Number(d.admin_rating) || 5,
+  adminTag: d.admin_tag || 'Genuine & Active Buyer',
+  adminReview: d.admin_review || '',
   adminReviewUpdatedAt: d.admin_review_updated_at
 });
 

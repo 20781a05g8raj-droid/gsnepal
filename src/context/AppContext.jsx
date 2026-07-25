@@ -281,15 +281,20 @@ export const AppProvider = ({ children }) => {
     showToast('Buyer removed from ERP directory & Supabase.', 'warning');
   };
 
-  const updateSellerAdminReview = (sellerId, { adminReview, adminRating, adminTag }) => {
+  const updateSellerAdminReview = (sellerId, reviewData) => {
+    if (!reviewData) return;
+    const newReview = reviewData.adminReview !== undefined ? reviewData.adminReview : (reviewData.review !== undefined ? reviewData.review : '');
+    const newRating = reviewData.adminRating !== undefined ? Number(reviewData.adminRating) : (reviewData.rating !== undefined ? Number(reviewData.rating) : 5);
+    const newTag = reviewData.adminTag !== undefined ? reviewData.adminTag : (reviewData.tag !== undefined ? reviewData.tag : 'Verified Supplier');
+
     let targetSeller = null;
     const updated = (sellers || []).map(s => {
       if (s.id === sellerId) {
         targetSeller = {
           ...s,
-          adminReview: adminReview !== undefined ? adminReview : s.adminReview,
-          adminRating: adminRating !== undefined ? Number(adminRating) : s.adminRating,
-          adminTag: adminTag !== undefined ? adminTag : s.adminTag,
+          adminReview: newReview,
+          adminRating: newRating,
+          adminTag: newTag,
           adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
         };
         return targetSeller;
@@ -302,15 +307,20 @@ export const AppProvider = ({ children }) => {
     showToast('Private Admin Review saved & synced to Supabase!', 'success');
   };
 
-  const updateBuyerAdminReview = (buyerId, { adminReview, adminRating, adminTag }) => {
+  const updateBuyerAdminReview = (buyerId, reviewData) => {
+    if (!reviewData) return;
+    const newReview = reviewData.adminReview !== undefined ? reviewData.adminReview : (reviewData.review !== undefined ? reviewData.review : '');
+    const newRating = reviewData.adminRating !== undefined ? Number(reviewData.adminRating) : (reviewData.rating !== undefined ? Number(reviewData.rating) : 5);
+    const newTag = reviewData.adminTag !== undefined ? reviewData.adminTag : (reviewData.tag !== undefined ? reviewData.tag : 'Genuine & Active Buyer');
+
     let targetBuyer = null;
     const updated = (buyers || []).map(b => {
       if (b.id === buyerId) {
         targetBuyer = {
           ...b,
-          adminReview: adminReview !== undefined ? adminReview : b.adminReview,
-          adminRating: adminRating !== undefined ? Number(adminRating) : b.adminRating,
-          adminTag: adminTag !== undefined ? adminTag : b.adminTag,
+          adminReview: newReview,
+          adminRating: newRating,
+          adminTag: newTag,
           adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
         };
         return targetBuyer;

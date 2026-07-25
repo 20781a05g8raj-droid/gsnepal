@@ -86,10 +86,20 @@ export default function AdminPanel() {
   const handleSaveAdminReview = (e) => {
     e.preventDefault();
     if (!reviewModalTarget || !reviewModalTarget.target) return;
+    
+    const payload = {
+      adminRating: Number(reviewForm.rating) || 5,
+      adminTag: reviewForm.tag,
+      adminReview: reviewForm.review,
+      rating: Number(reviewForm.rating) || 5,
+      tag: reviewForm.tag,
+      review: reviewForm.review
+    };
+
     if (reviewModalTarget.type === 'seller') {
-      updateSellerAdminReview && updateSellerAdminReview(reviewModalTarget.target.id, reviewForm);
+      updateSellerAdminReview && updateSellerAdminReview(reviewModalTarget.target.id, payload);
     } else {
-      updateBuyerAdminReview && updateBuyerAdminReview(reviewModalTarget.target.id, reviewForm);
+      updateBuyerAdminReview && updateBuyerAdminReview(reviewModalTarget.target.id, payload);
     }
     setReviewModalTarget(null);
   };
