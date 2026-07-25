@@ -187,3 +187,298 @@ export const getSupabaseClient = () => {
   }
   return null;
 };
+
+// Data Mapper Utilities for Supabase <-> JS
+export const mapSellerToDb = (s) => ({
+  id: s.id,
+  company_name: s.companyName,
+  contact_person: s.contactPerson,
+  email: s.email,
+  phone: s.phone || DEFAULT_WHATSAPP_NUMBER,
+  location: s.location,
+  pan_gst: s.panGst,
+  category: s.category,
+  status: s.status,
+  total_products: s.totalProducts || 0,
+  joined_date: s.joinedDate || new Date().toISOString().split('T')[0],
+  admin_rating: s.adminRating || 5,
+  admin_tag: s.adminTag || 'Verified Supplier',
+  admin_review: s.adminReview || '',
+  admin_review_updated_at: s.adminReviewUpdatedAt || new Date().toISOString().split('T')[0]
+});
+
+export const mapSellerFromDb = (d) => ({
+  id: d.id,
+  companyName: d.company_name,
+  contactPerson: d.contact_person,
+  email: d.email,
+  phone: d.phone,
+  location: d.location,
+  panGst: d.pan_gst,
+  category: d.category,
+  status: d.status,
+  totalProducts: d.total_products,
+  joinedDate: d.joined_date,
+  adminRating: d.admin_rating,
+  adminTag: d.admin_tag,
+  adminReview: d.admin_review,
+  adminReviewUpdatedAt: d.admin_review_updated_at
+});
+
+export const mapBuyerToDb = (b) => ({
+  id: b.id,
+  name: b.name,
+  email: b.email,
+  phone: b.phone || DEFAULT_WHATSAPP_NUMBER,
+  location: b.location,
+  interest: b.interest,
+  inquiries_sent: b.inquiriesSent || 0,
+  joined_date: b.joinedDate || new Date().toISOString().split('T')[0],
+  admin_rating: b.adminRating || 5,
+  admin_tag: b.adminTag || 'Genuine & Active Buyer',
+  admin_review: b.adminReview || '',
+  admin_review_updated_at: b.adminReviewUpdatedAt || new Date().toISOString().split('T')[0]
+});
+
+export const mapBuyerFromDb = (d) => ({
+  id: d.id,
+  name: d.name,
+  email: d.email,
+  phone: d.phone,
+  location: d.location,
+  interest: d.interest,
+  inquiriesSent: d.inquiries_sent,
+  joinedDate: d.joined_date,
+  adminRating: d.admin_rating,
+  adminTag: d.admin_tag,
+  adminReview: d.admin_review,
+  adminReviewUpdatedAt: d.admin_review_updated_at
+});
+
+export const mapJournalToDb = (j) => ({
+  id: j.id,
+  date: j.date || new Date().toISOString().split('T')[0],
+  seller_id: j.sellerId,
+  seller_name: j.sellerName,
+  buyer_name: j.buyerName,
+  product_name: j.productName,
+  category: j.category,
+  quantity: j.quantity,
+  unit: j.unit,
+  price_per_unit: j.pricePerUnit,
+  total_amount: j.totalAmount,
+  payment_status: j.paymentStatus,
+  delivery_status: j.deliveryStatus
+});
+
+export const mapJournalFromDb = (d) => ({
+  id: d.id,
+  date: d.date,
+  sellerId: d.seller_id,
+  sellerName: d.seller_name,
+  buyerName: d.buyer_name,
+  productName: d.product_name,
+  category: d.category,
+  quantity: Number(d.quantity) || 1,
+  unit: d.unit,
+  pricePerUnit: Number(d.price_per_unit) || 0,
+  totalAmount: Number(d.total_amount) || 0,
+  paymentStatus: d.payment_status,
+  deliveryStatus: d.delivery_status
+});
+
+export const mapInquiryToDb = (i) => ({
+  id: i.id,
+  buyer_name: i.buyerName,
+  product_name: i.productName,
+  seller_name: i.sellerName,
+  target_qty: i.targetQty,
+  estimated_value: i.estimatedValue,
+  status: i.status,
+  date: i.date
+});
+
+export const mapInquiryFromDb = (d) => ({
+  id: d.id,
+  buyerName: d.buyer_name,
+  productName: d.product_name,
+  sellerName: d.seller_name,
+  targetQty: d.target_qty,
+  estimatedValue: Number(d.estimated_value) || 0,
+  status: d.status,
+  date: d.date
+});
+
+// Async Supabase Database API Helpers
+export const fetchSupabaseProducts = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(p => ({ ...p, seller_phone: DEFAULT_WHATSAPP_NUMBER }));
+    }
+  } catch (e) {
+    console.warn('Failed fetching products from Supabase:', e);
+  }
+  return null;
+};
+
+export const fetchSupabaseSellers = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('sellers').select('*');
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(mapSellerFromDb);
+    }
+  } catch (e) {
+    console.warn('Failed fetching sellers from Supabase:', e);
+  }
+  return null;
+};
+
+export const fetchSupabaseBuyers = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('buyers').select('*');
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(mapBuyerFromDb);
+    }
+  } catch (e) {
+    console.warn('Failed fetching buyers from Supabase:', e);
+  }
+  return null;
+};
+
+export const fetchSupabaseSalesJournal = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('sales_journal').select('*').order('created_at', { ascending: false });
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(mapJournalFromDb);
+    }
+  } catch (e) {
+    console.warn('Failed fetching sales journal from Supabase:', e);
+  }
+  return null;
+};
+
+export const fetchSupabaseInquiries = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.from('inquiries').select('*').order('created_at', { ascending: false });
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(mapInquiryFromDb);
+    }
+  } catch (e) {
+    console.warn('Failed fetching inquiries from Supabase:', e);
+  }
+  return null;
+};
+
+export const upsertSupabaseProduct = async (product) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('products').upsert(product);
+    if (error) console.error('Supabase Product Sync Error:', error);
+  } catch (e) {
+    console.warn('Supabase product save exception:', e);
+  }
+};
+
+export const deleteSupabaseProduct = async (id) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) console.error('Supabase Product Delete Error:', error);
+  } catch (e) {
+    console.warn('Supabase product delete exception:', e);
+  }
+};
+
+export const upsertSupabaseSeller = async (seller) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const dbPayload = mapSellerToDb(seller);
+    const { error } = await supabase.from('sellers').upsert(dbPayload);
+    if (error) console.error('Supabase Seller Sync Error:', error);
+  } catch (e) {
+    console.warn('Supabase seller save exception:', e);
+  }
+};
+
+export const deleteSupabaseSeller = async (id) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('sellers').delete().eq('id', id);
+    if (error) console.error('Supabase Seller Delete Error:', error);
+  } catch (e) {
+    console.warn('Supabase seller delete exception:', e);
+  }
+};
+
+export const upsertSupabaseBuyer = async (buyer) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const dbPayload = mapBuyerToDb(buyer);
+    const { error } = await supabase.from('buyers').upsert(dbPayload);
+    if (error) console.error('Supabase Buyer Sync Error:', error);
+  } catch (e) {
+    console.warn('Supabase buyer save exception:', e);
+  }
+};
+
+export const deleteSupabaseBuyer = async (id) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('buyers').delete().eq('id', id);
+    if (error) console.error('Supabase Buyer Delete Error:', error);
+  } catch (e) {
+    console.warn('Supabase buyer delete exception:', e);
+  }
+};
+
+export const upsertSupabaseSalesJournal = async (journalEntry) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const dbPayload = mapJournalToDb(journalEntry);
+    const { error } = await supabase.from('sales_journal').upsert(dbPayload);
+    if (error) console.error('Supabase Sales Journal Sync Error:', error);
+  } catch (e) {
+    console.warn('Supabase journal save exception:', e);
+  }
+};
+
+export const deleteSupabaseSalesJournal = async (id) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('sales_journal').delete().eq('id', id);
+    if (error) console.error('Supabase Sales Journal Delete Error:', error);
+  } catch (e) {
+    console.warn('Supabase journal delete exception:', e);
+  }
+};
+
+export const upsertSupabaseInquiry = async (inquiry) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    const dbPayload = mapInquiryToDb(inquiry);
+    const { error } = await supabase.from('inquiries').upsert(dbPayload);
+    if (error) console.error('Supabase Inquiry Sync Error:', error);
+  } catch (e) {
+    console.warn('Supabase inquiry save exception:', e);
+  }
+};

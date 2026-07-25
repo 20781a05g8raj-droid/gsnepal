@@ -17,7 +17,7 @@ import {
 import { DEFAULT_WHATSAPP_NUMBER } from '../lib/supabase';
 
 export default function ProductDetailModal() {
-  const { selectedProductModal, setSelectedProductModal, userProfile, showToast } = useApp();
+  const { selectedProductModal, setSelectedProductModal, userProfile, addInquiry, showToast } = useApp();
   const [copied, setCopied] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -61,6 +61,18 @@ export default function ProductDetailModal() {
     setCopied(true);
     if (showToast) showToast(`WhatsApp message for ${buyerName} copied to clipboard!`, 'info');
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleWhatsAppClick = () => {
+    if (addInquiry) {
+      addInquiry({
+        buyerName: buyerName,
+        productName: product.name,
+        sellerName: product.seller_name,
+        targetQty: product.moq || '1 Unit',
+        estimatedValue: Number(product.price) || 0
+      });
+    }
   };
 
   return (
@@ -239,6 +251,7 @@ export default function ProductDetailModal() {
                 href={whatsappURL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={handleWhatsAppClick}
                 className="flex-1 py-3 px-6 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all"
               >
                 <MessageSquare className="w-5 h-5 fill-emerald-200/30" />

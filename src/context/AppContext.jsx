@@ -5,7 +5,21 @@ import {
   getStoredConfig,
   saveStoredConfig,
   INITIAL_PRODUCTS,
-  DEFAULT_WHATSAPP_NUMBER
+  DEFAULT_WHATSAPP_NUMBER,
+  fetchSupabaseProducts,
+  fetchSupabaseSellers,
+  fetchSupabaseBuyers,
+  fetchSupabaseSalesJournal,
+  fetchSupabaseInquiries,
+  upsertSupabaseProduct,
+  deleteSupabaseProduct,
+  upsertSupabaseSeller,
+  deleteSupabaseSeller,
+  upsertSupabaseBuyer,
+  deleteSupabaseBuyer,
+  upsertSupabaseSalesJournal,
+  deleteSupabaseSalesJournal,
+  upsertSupabaseInquiry
 } from '../lib/supabase';
 import { INITIAL_SELLERS, INITIAL_BUYERS, INITIAL_INQUIRIES, INITIAL_SALES_JOURNAL } from '../data/erpData';
 
@@ -93,10 +107,63 @@ export const AppProvider = ({ children }) => {
     }, 4000);
   };
 
+  // Synchronize All Datasets with Supabase Backend on Mount
   useEffect(() => {
-    const loaded = getStoredProducts();
-    setProducts(Array.isArray(loaded) && loaded.length > 0 ? loaded : INITIAL_PRODUCTS);
-    setSupabaseConfig(getStoredConfig());
+    const loadedConfig = getStoredConfig();
+    setSupabaseConfig(loadedConfig);
+
+    const syncSupabaseBackend = async () => {
+      // 1. Products Sync
+      const spProducts = await fetchSupabaseProducts();
+      if (spProducts && spProducts.length > 0) {
+        setProducts(spProducts);
+        saveStoredProducts(spProducts);
+      } else {
+        const loaded = getStoredProducts();
+        const initialProds = Array.isArray(loaded) && loaded.length > 0 ? loaded : INITIAL_PRODUCTS;
+        setProducts(initialProds);
+        // Seed initial products to Supabase if empty
+        initialProds.forEach(p => upsertSupabaseProduct(p));
+      }
+
+      // 2. Sellers Sync
+      const spSellers = await fetchSupabaseSellers();
+      if (spSellers && spSellers.length > 0) {
+        setSellers(spSellers);
+        localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(spSellers));
+      } else {
+        INITIAL_SELLERS.forEach(s => upsertSupabaseSeller(s));
+      }
+
+      // 3. Buyers Sync
+      const spBuyers = await fetchSupabaseBuyers();
+      if (spBuyers && spBuyers.length > 0) {
+        setBuyers(spBuyers);
+        localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(spBuyers));
+      } else {
+        INITIAL_BUYERS.forEach(b => upsertSupabaseBuyer(b));
+      }
+
+      // 4. Sales Journal Sync
+      const spJournal = await fetchSupabaseSalesJournal();
+      if (spJournal && spJournal.length > 0) {
+        setSalesJournal(spJournal);
+        localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(spJournal));
+      } else {
+        INITIAL_SALES_JOURNAL.forEach(j => upsertSupabaseSalesJournal(j));
+      }
+
+      // 5. WhatsApp Inquiries Sync
+      const spInquiries = await fetchSupabaseInquiries();
+      if (spInquiries && spInquiries.length > 0) {
+        setInquiries(spInquiries);
+        localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(spInquiries));
+      } else {
+        INITIAL_INQUIRIES.forEach(i => upsertSupabaseInquiry(i));
+      }
+    };
+
+    syncSupabaseBackend();
   }, []);
 
   const updateProductsState = (newProducts) => {
@@ -158,13 +225,18 @@ export const AppProvider = ({ children }) => {
         category: 'General Wholesaler',
         status: 'Verified',
         totalProducts: 0,
-        joinedDate: new Date().toISOString().split('T')[0]
+        joinedDate: new Date().toISOString().split('T')[0],
+        adminRating: 5,
+        adminTag: 'Verified Supplier',
+        adminReview: '',
+        adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
       };
       const updatedSellers = [newSeller, ...(sellers || [])];
       setSellers(updatedSellers);
       localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(updatedSellers));
+      upsertSupabaseSeller(newSeller);
       setActiveNav('seller');
-      showToast(`Seller registered in ERP! Welcome ${newUser.name}`, 'success');
+      showToast(`Seller registered in ERP & Supabase! Welcome ${newUser.name}`, 'success');
     } else {
       const newBuyer = {
         id: newUser.id,
@@ -174,13 +246,18 @@ export const AppProvider = ({ children }) => {
         location: userData.location || 'Nepal / India',
         interest: 'General Sourcing',
         inquiriesSent: 0,
-        joinedDate: new Date().toISOString().split('T')[0]
+        joinedDate: new Date().toISOString().split('T')[0],
+        adminRating: 5,
+        adminTag: 'Genuine & Active Buyer',
+        adminReview: '',
+        adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
       };
       const updatedBuyers = [newBuyer, ...(buyers || [])];
       setBuyers(updatedBuyers);
       localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(updatedBuyers));
+      upsertSupabaseBuyer(newBuyer);
       setActiveNav('catalog');
-      showToast(`Buyer registered in ERP! Welcome ${newUser.name}`, 'success');
+      showToast(`Buyer registered in ERP & Supabase! Welcome ${newUser.name}`, 'success');
     }
   };
 
@@ -192,65 +269,81 @@ export const AppProvider = ({ children }) => {
     showToast('Logged out successfully.', 'info');
   };
 
-  // ERP Actions: Sellers & Buyers management
+  // ERP Actions: Sellers & Buyers management with Real-time Supabase Persistence
   const verifySeller = (sellerId) => {
-    const updated = (sellers || []).map(s => s.id === sellerId ? { ...s, status: 'Verified' } : s);
+    let targetSeller = null;
+    const updated = (sellers || []).map(s => {
+      if (s.id === sellerId) {
+        targetSeller = { ...s, status: 'Verified' };
+        return targetSeller;
+      }
+      return s;
+    });
     setSellers(updated);
     localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(updated));
-    showToast('Seller verified in ERP directory!', 'success');
+    if (targetSeller) upsertSupabaseSeller(targetSeller);
+    showToast('Seller verified in ERP directory & Supabase!', 'success');
   };
 
   const deleteSeller = (sellerId) => {
     const updated = (sellers || []).filter(s => s.id !== sellerId);
     setSellers(updated);
     localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(updated));
-    showToast('Seller removed from ERP directory.', 'warning');
+    deleteSupabaseSeller(sellerId);
+    showToast('Seller removed from ERP directory & Supabase.', 'warning');
   };
 
   const deleteBuyer = (buyerId) => {
     const updated = (buyers || []).filter(b => b.id !== buyerId);
     setBuyers(updated);
     localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(updated));
-    showToast('Buyer removed from ERP directory.', 'warning');
+    deleteSupabaseBuyer(buyerId);
+    showToast('Buyer removed from ERP directory & Supabase.', 'warning');
   };
 
   const updateSellerAdminReview = (sellerId, { adminReview, adminRating, adminTag }) => {
+    let targetSeller = null;
     const updated = (sellers || []).map(s => {
       if (s.id === sellerId) {
-        return {
+        targetSeller = {
           ...s,
           adminReview: adminReview !== undefined ? adminReview : s.adminReview,
           adminRating: adminRating !== undefined ? Number(adminRating) : s.adminRating,
           adminTag: adminTag !== undefined ? adminTag : s.adminTag,
           adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
         };
+        return targetSeller;
       }
       return s;
     });
     setSellers(updated);
     localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(updated));
-    showToast('Private Admin Review updated for Seller!', 'success');
+    if (targetSeller) upsertSupabaseSeller(targetSeller);
+    showToast('Private Admin Review saved & synced to Supabase!', 'success');
   };
 
   const updateBuyerAdminReview = (buyerId, { adminReview, adminRating, adminTag }) => {
+    let targetBuyer = null;
     const updated = (buyers || []).map(b => {
       if (b.id === buyerId) {
-        return {
+        targetBuyer = {
           ...b,
           adminReview: adminReview !== undefined ? adminReview : b.adminReview,
           adminRating: adminRating !== undefined ? Number(adminRating) : b.adminRating,
           adminTag: adminTag !== undefined ? adminTag : b.adminTag,
           adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
         };
+        return targetBuyer;
       }
       return b;
     });
     setBuyers(updated);
     localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(updated));
-    showToast('Private Admin Review updated for Buyer!', 'success');
+    if (targetBuyer) upsertSupabaseBuyer(targetBuyer);
+    showToast('Private Admin Review saved & synced to Supabase!', 'success');
   };
 
-  // Sales Journal Ledger Actions
+  // Sales Journal Ledger Actions with Supabase Persistence
   const addSalesJournalEntry = (entryData) => {
     const newEntry = {
       id: 'JRN-2026-' + Date.now().toString().slice(-4),
@@ -271,16 +364,38 @@ export const AppProvider = ({ children }) => {
     const updated = [newEntry, ...(salesJournal || [])];
     setSalesJournal(updated);
     localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(updated));
-    showToast(`Recorded Sales Entry #${newEntry.id} in Seller Journal!`, 'success');
+    upsertSupabaseSalesJournal(newEntry);
+    showToast(`Recorded Sales Entry #${newEntry.id} in Seller Journal & Supabase!`, 'success');
   };
 
   const deleteSalesJournalEntry = (entryId) => {
     const updated = (salesJournal || []).filter(j => j.id !== entryId);
     setSalesJournal(updated);
     localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(updated));
-    showToast('Sales Journal Entry removed.', 'warning');
+    deleteSupabaseSalesJournal(entryId);
+    showToast('Sales Journal Entry removed from ERP & Supabase.', 'warning');
   };
 
+  // WhatsApp Inquiry Lead Tracking Action
+  const addInquiry = (inquiryData) => {
+    const newInquiry = {
+      id: 'inq-' + Date.now().toString().slice(-4),
+      buyerName: inquiryData.buyerName || userProfile?.name || 'Verified Buyer',
+      productName: inquiryData.productName || 'Wholesale Product',
+      sellerName: inquiryData.sellerName || 'Verified Supplier',
+      targetQty: inquiryData.targetQty || '1 Unit',
+      estimatedValue: Number(inquiryData.estimatedValue) || 0,
+      status: 'Converted / Direct WhatsApp',
+      date: new Date().toISOString().split('T')[0]
+    };
+
+    const updated = [newInquiry, ...(inquiries || [])];
+    setInquiries(updated);
+    localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(updated));
+    upsertSupabaseInquiry(newInquiry);
+  };
+
+  // Master Catalog Product Management Actions with Supabase Persistence
   const addProduct = (productData) => {
     const newProduct = {
       id: 'prod-' + Date.now().toString().slice(-6),
@@ -305,35 +420,49 @@ export const AppProvider = ({ children }) => {
 
     const updated = [newProduct, ...(products || [])];
     updateProductsState(updated);
+    upsertSupabaseProduct(newProduct);
     
     if (role === 'admin') {
-      showToast('Product added & approved by Admin!', 'success');
+      showToast('Product added, approved & saved to Supabase!', 'success');
     } else {
-      showToast('Product submitted! Pending Admin Approval.', 'info');
+      showToast('Product submitted! Pending Admin Approval (Saved to Supabase).', 'info');
     }
     setIsAddModalOpen(false);
   };
 
   const updateProduct = (productId, updatedData) => {
-    const updated = (products || []).map(p => 
-      p.id === productId ? { ...p, ...updatedData } : p
-    );
+    let updatedProduct = null;
+    const updated = (products || []).map(p => {
+      if (p.id === productId) {
+        updatedProduct = { ...p, ...updatedData };
+        return updatedProduct;
+      }
+      return p;
+    });
     updateProductsState(updated);
-    showToast('Product updated by Admin ERP!', 'success');
+    if (updatedProduct) upsertSupabaseProduct(updatedProduct);
+    showToast('Product updated in ERP & Supabase!', 'success');
   };
 
   const approveProduct = (productId) => {
-    const updated = (products || []).map(p => 
-      p.id === productId ? { ...p, is_approved: true } : p
-    );
+    let approvedProduct = null;
+    const updated = (products || []).map(p => {
+      if (p.id === productId) {
+        approvedProduct = { ...p, is_approved: true };
+        return approvedProduct;
+      }
+      return p;
+    });
     updateProductsState(updated);
-    showToast('Product Approved! Now visible to all Buyers in Catalog.', 'success');
+    if (approvedProduct) upsertSupabaseProduct(approvedProduct);
+    showToast('Product Approved & Synced to Supabase!', 'success');
   };
 
   const deleteProduct = (productId) => {
     const updated = (products || []).filter(p => p.id !== productId);
     updateProductsState(updated);
-    showToast('Product removed.', 'warning');
+    deleteSupabaseProduct(productId);
+    showToast('Product removed from catalog & Supabase.', 'warning');
   };
 
   const resetData = () => {
@@ -346,7 +475,15 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(INITIAL_BUYERS));
     localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(INITIAL_INQUIRIES));
     localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(INITIAL_SALES_JOURNAL));
-    showToast('Reset ERP dataset to initial state.', 'info');
+    
+    // Seed reset datasets to Supabase
+    INITIAL_PRODUCTS.forEach(p => upsertSupabaseProduct(p));
+    INITIAL_SELLERS.forEach(s => upsertSupabaseSeller(s));
+    INITIAL_BUYERS.forEach(b => upsertSupabaseBuyer(b));
+    INITIAL_SALES_JOURNAL.forEach(j => upsertSupabaseSalesJournal(j));
+    INITIAL_INQUIRIES.forEach(i => upsertSupabaseInquiry(i));
+
+    showToast('Reset ERP dataset & resynced to Supabase initial state.', 'info');
   };
 
   const saveConfig = (url, key) => {
@@ -378,6 +515,7 @@ export const AppProvider = ({ children }) => {
       updateBuyerAdminReview,
       addSalesJournalEntry,
       deleteSalesJournalEntry,
+      addInquiry,
       products: products || INITIAL_PRODUCTS,
       addProduct,
       updateProduct,
