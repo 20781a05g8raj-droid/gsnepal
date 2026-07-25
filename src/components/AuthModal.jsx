@@ -49,7 +49,7 @@ export default function AuthModal() {
 
   if (!isAuthModalOpen) return null;
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (!loginEmail || !loginPassword) {
@@ -57,35 +57,21 @@ export default function AuthModal() {
       return;
     }
 
-    const secretAdminEmail = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@wsnepal.com';
-    const secretAdminPass = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_PASSWORD) || 'admin123';
+    const res = await loginUser({
+      email: loginEmail,
+      password: loginPassword,
+      name: loginEmail.split('@')[0]
+    });
 
-    const isAdminAttempt = loginEmail.toLowerCase().trim() === secretAdminEmail.toLowerCase().trim() || loginEmail.toLowerCase().includes('admin');
-
-    if (isAdminAttempt) {
-      if (loginPassword !== secretAdminPass) {
-        setErrorMsg('🔒 Incorrect Secret Admin Password! Access Denied.');
-        return;
-      }
-      loginUser({
-        email: secretAdminEmail,
-        name: 'Super Admin ERP',
-        role: 'admin'
-      });
-      setIsAuthModalOpen(false);
+    if (res && res.error) {
+      setErrorMsg(res.error);
       return;
     }
 
-    const assignedRole = loginEmail.toLowerCase().includes('seller') ? 'seller' : 'buyer';
-    loginUser({
-      email: loginEmail,
-      name: loginEmail.split('@')[0],
-      role: assignedRole
-    });
     setIsAuthModalOpen(false);
   };
 
-  const handleBuyerSignupSubmit = (e) => {
+  const handleBuyerSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -104,7 +90,7 @@ export default function AuthModal() {
       return;
     }
 
-    registerUser({
+    const res = await registerUser({
       name: buyerData.name,
       email: buyerData.email,
       phone: buyerData.phone || '9779821863885',
@@ -112,10 +98,16 @@ export default function AuthModal() {
       password: buyerData.password,
       role: 'buyer'
     });
+
+    if (res && res.error) {
+      setErrorMsg(res.error);
+      return;
+    }
+
     setIsAuthModalOpen(false);
   };
 
-  const handleSellerSignupSubmit = (e) => {
+  const handleSellerSignupSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -134,16 +126,22 @@ export default function AuthModal() {
       return;
     }
 
-    registerUser({
+    const res = await registerUser({
       name: sellerData.companyName,
-      contactPerson: sellerData.contactName,
+      contactPerson: sellerData.contactName || sellerData.companyName,
       email: sellerData.email,
       phone: sellerData.phone || '9779821863885',
-      location: sellerData.location || 'Kathmandu / Delhi',
-      panNumber: sellerData.panNumber,
+      location: sellerData.location || 'Kathmandu, Nepal',
+      panNumber: sellerData.panNumber || '',
       password: sellerData.password,
       role: 'seller'
     });
+
+    if (res && res.error) {
+      setErrorMsg(res.error);
+      return;
+    }
+
     setIsAuthModalOpen(false);
   };
 

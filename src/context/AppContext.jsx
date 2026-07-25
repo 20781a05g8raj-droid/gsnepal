@@ -19,7 +19,10 @@ import {
   deleteSupabaseBuyer,
   upsertSupabaseSalesJournal,
   deleteSupabaseSalesJournal,
-  upsertSupabaseInquiry
+  upsertSupabaseInquiry,
+  signInWithSupabaseAuth,
+  signUpWithSupabaseAuth,
+  signOutSupabaseAuth
 } from '../lib/supabase';
 import { INITIAL_SELLERS, INITIAL_BUYERS, INITIAL_INQUIRIES, INITIAL_SALES_JOURNAL } from '../data/erpData';
 
@@ -151,13 +154,46 @@ export const AppProvider = ({ children }) => {
     saveStoredProducts(newProducts);
   };
 
-  // Auth Functions
-  const loginUser = ({ email, name, role: userRole }) => {
-    const assignedRole = userRole || (email.includes('admin') ? 'admin' : (email.includes('seller') ? 'seller' : 'buyer'));
+  // Secure Auth Functions with Supabase Auth Engine
+  const loginUser = async ({ email, password, name, role: userRole }) => {
+    const cleanEmail = email ? email.trim() : '';
+    const assignedRole = userRole || (cleanEmail.includes('admin') ? 'admin' : (cleanEmail.includes('seller') ? 'seller' : 'buyer'));
+
+    // Attempt Supabase Real Server-side Hashed Authentication
+    if (password) {
+      const { data, error } = await signInWithSupabaseAuth(cleanEmail, password);
+      if (error) {
+        return { error: error.message || 'Authentication failed.' };
+      }
+      
+      const authUser = data?.user;
+      const metaRole = authUser?.user_metadata?.role || assignedRole;
+      const newUser = {
+        id: authUser?.id || (metaRole === 'seller' ? 'seller-101' : (metaRole === 'admin' ? 'admin-001' : 'buyer-' + Date.now().toString().slice(-4))),
+        name: authUser?.user_metadata?.name || name || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        role: metaRole,
+        phone: authUser?.user_metadata?.phone || DEFAULT_WHATSAPP_NUMBER,
+        location: authUser?.user_metadata?.location || 'Kathmandu / Nepal',
+        isLoggedIn: true
+      };
+      setUserProfile(newUser);
+      setRole(metaRole);
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newUser));
+
+      if (metaRole === 'seller') setActiveNav('seller');
+      else if (metaRole === 'admin') setActiveNav('admin');
+      else setActiveNav('catalog');
+
+      showToast(`Authenticated via Supabase Auth! Welcome ${newUser.name}`, 'success');
+      return { success: true, user: newUser };
+    }
+
+    // Direct Login Fallback (dev mode)
     const newUser = {
       id: assignedRole === 'seller' ? 'seller-101' : (assignedRole === 'admin' ? 'admin-001' : 'buyer-' + Date.now().toString().slice(-4)),
-      name: name || email.split('@')[0],
-      email: email,
+      name: name || cleanEmail.split('@')[0],
+      email: cleanEmail,
       role: assignedRole,
       phone: DEFAULT_WHATSAPP_NUMBER,
       location: 'Kathmandu / Delhi',
@@ -167,22 +203,34 @@ export const AppProvider = ({ children }) => {
     setRole(assignedRole);
     localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(newUser));
 
-    if (assignedRole === 'seller') {
-      setActiveNav('seller');
-    } else if (assignedRole === 'admin') {
-      setActiveNav('admin');
-    } else {
-      setActiveNav('catalog');
-    }
+    if (assignedRole === 'seller') setActiveNav('seller');
+    else if (assignedRole === 'admin') setActiveNav('admin');
+    else setActiveNav('catalog');
 
     showToast(`Welcome, ${newUser.name}! Active mode: ${assignedRole.toUpperCase()}`, 'success');
+    return { success: true, user: newUser };
   };
 
-  const registerUser = (userData) => {
+  const registerUser = async (userData) => {
+    const cleanEmail = userData.email ? userData.email.trim() : '';
+
+    if (userData.password) {
+      const { data, error } = await signUpWithSupabaseAuth(cleanEmail, userData.password, {
+        name: userData.name,
+        role: userData.role,
+        phone: userData.phone,
+        location: userData.location
+      });
+
+      if (error) {
+        return { error: error.message || 'Registration failed.' };
+      }
+    }
+
     const newUser = {
       id: userData.role === 'seller' ? 'seller-' + Date.now().toString().slice(-4) : 'buyer-' + Date.now().toString().slice(-4),
       name: userData.name,
-      email: userData.email,
+      email: cleanEmail,
       role: userData.role,
       phone: userData.phone || DEFAULT_WHATSAPP_NUMBER,
       location: userData.location,
@@ -198,7 +246,7 @@ export const AppProvider = ({ children }) => {
         id: newUser.id,
         companyName: userData.name,
         contactPerson: userData.contactPerson || userData.name,
-        email: userData.email,
+        email: cleanEmail,
         phone: userData.phone || DEFAULT_WHATSAPP_NUMBER,
         location: userData.location || 'Kathmandu, Nepal',
         panGst: userData.panNumber || 'PAN Pending',
@@ -221,7 +269,7 @@ export const AppProvider = ({ children }) => {
       const newBuyer = {
         id: newUser.id,
         name: userData.name,
-        email: userData.email,
+        email: cleanEmail,
         phone: userData.phone || DEFAULT_WHATSAPP_NUMBER,
         location: userData.location || 'Nepal / India',
         interest: 'General Sourcing',
@@ -239,6 +287,7 @@ export const AppProvider = ({ children }) => {
       setActiveNav('catalog');
       showToast(`Buyer registered in ERP & Supabase! Welcome ${newUser.name}`, 'success');
     }
+    return { success: true, user: newUser };
   };
 
   const logoutUser = () => {
@@ -246,6 +295,7 @@ export const AppProvider = ({ children }) => {
     setRole('buyer');
     setActiveNav('catalog');
     localStorage.removeItem(STORAGE_KEY_AUTH);
+    signOutSupabaseAuth();
     showToast('Logged out successfully.', 'info');
   };
 

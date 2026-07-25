@@ -188,6 +188,46 @@ export const getSupabaseClient = () => {
   return null;
 };
 
+// Supabase Authentication Backend Helpers
+export const signInWithSupabaseAuth = async (email, password) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null, error: new Error('Supabase backend not connected.') };
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password
+    });
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+};
+
+export const signUpWithSupabaseAuth = async (email, password, metadata = {}) => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { data: null, error: new Error('Supabase backend not connected.') };
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: password,
+      options: {
+        data: metadata
+      }
+    });
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+};
+
+export const signOutSupabaseAuth = async () => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {}
+};
+
 // Data Mapper Utilities for Supabase <-> JS
 export const mapSellerToDb = (s) => ({
   id: s.id,
