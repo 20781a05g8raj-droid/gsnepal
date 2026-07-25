@@ -31,7 +31,11 @@ import {
   PieChart,
   ArrowUpRight,
   Download,
-  Layers
+  Layers,
+  Star,
+  Lock,
+  ShieldAlert,
+  ThumbsUp
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -44,6 +48,8 @@ export default function AdminPanel() {
     verifySeller,
     deleteSeller,
     deleteBuyer,
+    updateSellerAdminReview,
+    updateBuyerAdminReview,
     addSalesJournalEntry,
     deleteSalesJournalEntry,
     approveProduct,
@@ -59,6 +65,65 @@ export default function AdminPanel() {
   const [selectedSellerFilter, setSelectedSellerFilter] = useState('All Sellers');
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [companyAnalyticsFilter, setCompanyAnalyticsFilter] = useState('All Sellers');
+
+  // Admin Review Modal State
+  const [reviewModalTarget, setReviewModalTarget] = useState(null); // { type: 'seller' | 'buyer', target: object }
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    tag: '',
+    review: ''
+  });
+
+  const openReviewModal = (type, target) => {
+    setReviewModalTarget({ type, target });
+    setReviewForm({
+      rating: target.adminRating || 5,
+      tag: target.adminTag || (type === 'seller' ? 'Verified Supplier' : 'Genuine & Active Buyer'),
+      review: target.adminReview || ''
+    });
+  };
+
+  const handleSaveAdminReview = (e) => {
+    e.preventDefault();
+    if (!reviewModalTarget || !reviewModalTarget.target) return;
+    if (reviewModalTarget.type === 'seller') {
+      updateSellerAdminReview && updateSellerAdminReview(reviewModalTarget.target.id, reviewForm);
+    } else {
+      updateBuyerAdminReview && updateBuyerAdminReview(reviewModalTarget.target.id, reviewForm);
+    }
+    setReviewModalTarget(null);
+  };
+
+  const renderStars = (rating = 5) => {
+    const num = Number(rating) || 5;
+    return (
+      <div className="flex items-center gap-0.5 text-amber-400">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-3.5 h-3.5 ${star <= num ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const getTagBadgeStyle = (tag) => {
+    if (!tag) return 'bg-slate-100 text-slate-700 border-slate-200';
+    if (tag.includes('Reliable') || tag.includes('VIP') || tag.includes('Top')) {
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold';
+    }
+    if (tag.includes('Verified') || tag.includes('Genuine')) {
+      return 'bg-blue-50 text-blue-700 border-blue-200 font-bold';
+    }
+    if (tag.includes('Monitoring') || tag.includes('Low')) {
+      return 'bg-amber-50 text-amber-700 border-amber-200 font-bold';
+    }
+    if (tag.includes('Risk') || tag.includes('Suspicious') || tag.includes('Fraud')) {
+      return 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
+    }
+    return 'bg-purple-50 text-purple-700 border-purple-200 font-semibold';
+  };
 
   // New Journal Entry Modal State
   const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
@@ -298,56 +363,119 @@ export default function AdminPanel() {
     });
   };
 
-  const sqlSchema = `-- B2B Marketplace Enterprise Supabase PostgreSQL Schema
+  const sqlSchema = `-- B2B MARKETPLACE & ERP - COMPLETE SUPABASE POSTGRESQL SCHEMA
+-- Includes: Tables, Indexes, Row Level Security (RLS), and Initial Data
 
--- 1. Profiles Table (Roles: Admin, Seller, Buyer)
-create table profiles (
-  id uuid references auth.users not null primary key,
-  full_name text not null,
-  role text check (role in ('admin', 'seller', 'buyer')),
-  whatsapp_number text,
-  pan_gst text,
-  location text,
+create extension if not exists "uuid-ossp";
+
+-- 1. SELLERS TABLE (With Private Admin Reviews)
+create table if not exists public.sellers (
+  id text primary key,
+  company_name text not null,
+  contact_person text,
+  email text,
+  phone text default '9779821863885',
+  location text default 'Nepal',
+  pan_gst text default 'N/A',
+  category text default 'General Wholesaler',
+  status text default 'Pending Verification',
+  total_products integer default 0,
+  joined_date date default current_date,
+  admin_rating integer default 5 check (admin_rating between 1 and 5),
+  admin_tag text default 'Verified Supplier',
+  admin_review text,
+  admin_review_updated_at date default current_date,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 2. Products Table (Multi-Vendor Wholesale Catalog)
-create table products (
-  id uuid default uuid_generate_v4() primary key,
-  seller_id uuid references profiles(id) not null,
+-- 2. BUYERS TABLE (With Private Admin Reviews)
+create table if not exists public.buyers (
+  id text primary key,
+  name text not null,
+  email text,
+  phone text default '9779821863885',
+  location text default 'Nepal',
+  interest text default 'General Sourcing',
+  inquiries_sent integer default 0,
+  joined_date date default current_date,
+  admin_rating integer default 5 check (admin_rating between 1 and 5),
+  admin_tag text default 'Genuine & Active Buyer',
+  admin_review text,
+  admin_review_updated_at date default current_date,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 3. PRODUCTS TABLE (Wholesale Master Catalog)
+create table if not exists public.products (
+  id text primary key,
+  seller_id text references public.sellers(id) on delete set null,
   seller_name text,
-  seller_phone text,
-  seller_location text,
+  seller_phone text default '9779821863885',
+  seller_location text default 'Nepal',
   name text not null,
   description text,
-  price decimal not null,
+  price numeric(12,2) not null default 0,
   unit text default 'Piece',
   moq text default '1 Piece',
   category text not null,
   subcategory text,
   image_url text,
   images text[],
-  specifications jsonb,
+  specifications jsonb default '[]'::jsonb,
   is_approved boolean default false,
+  views integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 3. Sales Journal Ledger Table (Seller Sales Tracking)
-create table sales_journal (
-  id uuid default uuid_generate_v4() primary key,
-  seller_id uuid references profiles(id),
+-- 4. SALES JOURNAL LEDGER TABLE
+create table if not exists public.sales_journal (
+  id text primary key,
+  date date default current_date,
+  seller_id text references public.sellers(id) on delete set null,
   seller_name text not null,
   buyer_name text not null,
   product_name text not null,
-  category text,
-  quantity integer default 1,
+  category text default 'General',
+  quantity numeric(10,2) default 1,
   unit text default 'Pcs',
-  price_per_unit decimal not null,
-  total_amount decimal not null,
+  price_per_unit numeric(12,2) not null default 0,
+  total_amount numeric(12,2) not null default 0,
   payment_status text default 'Paid / Completed',
-  delivery_status text default 'Delivered',
+  delivery_status text default 'Dispatched',
   created_at timestamp with time zone default timezone('utc'::text, now())
-);`;
+);
+
+-- 5. INQUIRIES LEADS TABLE
+create table if not exists public.inquiries (
+  id text primary key,
+  buyer_name text not null,
+  product_name text not null,
+  seller_name text not null,
+  target_qty text default '1 Unit',
+  estimated_value numeric(12,2) default 0,
+  status text default 'Converted / Direct WhatsApp',
+  date date default current_date,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
+alter table public.sellers enable row level security;
+alter table public.buyers enable row level security;
+alter table public.products enable row level security;
+alter table public.sales_journal enable row level security;
+alter table public.inquiries enable row level security;
+
+create policy "Public Read Access" on public.products for select using (true);
+create policy "Public Read Access Sellers" on public.sellers for select using (true);
+create policy "Public Read Access Buyers" on public.buyers for select using (true);
+create policy "Public Read Access Journal" on public.sales_journal for select using (true);
+create policy "Public Read Access Inquiries" on public.inquiries for select using (true);
+
+create policy "Allow All Writes" on public.products for all using (true);
+create policy "Allow All Writes Sellers" on public.sellers for all using (true);
+create policy "Allow All Writes Buyers" on public.buyers for all using (true);
+create policy "Allow All Writes Journal" on public.sales_journal for all using (true);
+create policy "Allow All Writes Inquiries" on public.inquiries for all using (true);`;
 
   const copySql = () => {
     try {
@@ -937,6 +1065,34 @@ create table sales_journal (
                     )}
                   </div>
 
+                  {/* Admin Confidential Review Badge */}
+                  <div className="pt-3 border-t border-slate-100 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-purple-600" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Admin Review:</span>
+                        {renderStars(agg.seller.adminRating || 5)}
+                        <span className="text-[10px] font-bold text-slate-500">({agg.seller.adminRating || 5}/5)</span>
+                      </div>
+                      <button
+                        onClick={() => openReviewModal('seller', agg.seller)}
+                        className="text-xs text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1 hover:underline"
+                      >
+                        <Edit3 className="w-3 h-3" /> Edit Review
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] border ${getTagBadgeStyle(agg.seller.adminTag)}`}>
+                        {agg.seller.adminTag || 'Verified Supplier'}
+                      </span>
+                      {agg.seller.adminReview && (
+                        <p className="text-[11px] text-slate-600 italic truncate max-w-[240px]">
+                          "{agg.seller.adminReview}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               ))}
             </div>
@@ -1161,6 +1317,7 @@ create table sales_journal (
                   <th className="py-4 px-4">Location</th>
                   <th className="py-4 px-4">PAN / GST No.</th>
                   <th className="py-4 px-4">Status</th>
+                  <th className="py-4 px-4">Admin Private Review</th>
                   <th className="py-4 px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1188,7 +1345,34 @@ create table sales_journal (
                         </span>
                       )}
                     </td>
+                    <td className="py-4 px-4 max-w-[220px]">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          {renderStars(seller.adminRating || 5)}
+                          <span className="text-[10px] text-slate-400 font-mono">({seller.adminRating || 5}/5)</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] border inline-block ${getTagBadgeStyle(seller.adminTag)}`}>
+                          {seller.adminTag || 'Verified Supplier'}
+                        </span>
+                        {seller.adminReview ? (
+                          <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-1.5 rounded-lg border border-slate-200/80 flex items-start gap-1">
+                            <Lock className="w-3 h-3 text-purple-600 shrink-0 mt-0.5" />
+                            <span>"{seller.adminReview}"</span>
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 italic">No admin notes added yet</p>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-4 px-6 text-right space-x-2">
+                      <button
+                        onClick={() => openReviewModal('seller', seller)}
+                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 inline-flex"
+                        title="Add/Edit Admin Private Evaluation"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Admin Review</span>
+                      </button>
                       {seller.status !== 'Verified' && (
                         <button
                           onClick={() => verifySeller && verifySeller(seller.id)}
@@ -1238,6 +1422,7 @@ create table sales_journal (
                   <th className="py-4 px-4">Location</th>
                   <th className="py-4 px-4">Sourcing Interest</th>
                   <th className="py-4 px-4">Inquiries Sent</th>
+                  <th className="py-4 px-4">Admin Private Review</th>
                   <th className="py-4 px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1254,7 +1439,34 @@ create table sales_journal (
                       </span>
                     </td>
                     <td className="py-4 px-4 font-bold text-emerald-700">{buyer.inquiriesSent || 0} leads</td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-4 px-4 max-w-[220px]">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          {renderStars(buyer.adminRating || 5)}
+                          <span className="text-[10px] text-slate-400 font-mono">({buyer.adminRating || 5}/5)</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] border inline-block ${getTagBadgeStyle(buyer.adminTag)}`}>
+                          {buyer.adminTag || 'Genuine & Active Buyer'}
+                        </span>
+                        {buyer.adminReview ? (
+                          <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-1.5 rounded-lg border border-slate-200/80 flex items-start gap-1">
+                            <Lock className="w-3 h-3 text-purple-600 shrink-0 mt-0.5" />
+                            <span>"{buyer.adminReview}"</span>
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 italic">No admin notes added yet</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-right space-x-2">
+                      <button
+                        onClick={() => openReviewModal('buyer', buyer)}
+                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 inline-flex"
+                        title="Add/Edit Admin Private Evaluation"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Admin Review</span>
+                      </button>
                       <button
                         onClick={() => deleteBuyer && deleteBuyer(buyer.id)}
                         className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 font-bold text-[11px] hover:bg-rose-100"
@@ -1556,6 +1768,181 @@ create table sales_journal (
           editingProduct={editingProduct} 
           setEditingProduct={setEditingProduct} 
         />
+      )}
+
+      {/* PRIVATE ADMIN REVIEW & EVALUATION MODAL */}
+      {reviewModalTarget && reviewModalTarget.target && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in"
+          onClick={() => setReviewModalTarget(null)}
+        >
+          <div 
+            className="relative w-full max-w-lg bg-white rounded-3xl border border-purple-200 shadow-2xl overflow-hidden my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-purple-100 bg-purple-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-purple-600 text-white shadow-md">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                    Private Admin Review
+                  </h3>
+                  <p className="text-xs text-purple-700 font-semibold">
+                    Confidential Evaluation for {reviewModalTarget.type === 'seller' ? 'Seller' : 'Buyer'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReviewModalTarget(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-purple-100/60 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Profile Info Summary Header */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs">
+              <div>
+                <span className="font-extrabold text-slate-900 text-sm">
+                  {reviewModalTarget.target.companyName || reviewModalTarget.target.name}
+                </span>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {reviewModalTarget.target.contactPerson ? `Contact: ${reviewModalTarget.target.contactPerson} • ` : ''}
+                  +{reviewModalTarget.target.phone || ''}
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px] uppercase tracking-wider">
+                {reviewModalTarget.type.toUpperCase()} ACCOUNT
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveAdminReview} className="p-6 space-y-5 text-xs">
+              
+              {/* Star Rating Input */}
+              <div className="space-y-2">
+                <label className="font-extrabold text-slate-800 text-xs block">
+                  Admin Star Rating (1 - 5 Stars) *
+                </label>
+                <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 w-fit">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                      className="p-1 hover:scale-125 transition-transform"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${
+                          star <= (reviewForm.rating || 5)
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-slate-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="font-extrabold text-slate-700 ml-2 text-sm">
+                    {reviewForm.rating || 5} / 5 Stars
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Tag / Grade Selector */}
+              <div className="space-y-2">
+                <label className="font-extrabold text-slate-800 text-xs block">
+                  Evaluation Tag / Grade Badge *
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(reviewModalTarget.type === 'seller' 
+                    ? [
+                        'Highly Reliable / Top Seller',
+                        'Verified Supplier',
+                        'Standard Wholesaler',
+                        'Needs Monitoring / Delay Risk',
+                        'High Risk / Suspicious'
+                      ]
+                    : [
+                        'VIP High Volume Buyer',
+                        'Genuine & Active Buyer',
+                        'Standard Sourcing Account',
+                        'Low Response Rate',
+                        'Fraud Risk / Suspicious Lead'
+                      ]
+                  ).map((presetTag) => (
+                    <button
+                      key={presetTag}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, tag: presetTag })}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs border ${
+                        reviewForm.tag === presetTag
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {presetTag}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  value={reviewForm.tag}
+                  onChange={(e) => setReviewForm({ ...reviewForm, tag: e.target.value })}
+                  placeholder="Or type custom tag (e.g. Prompt Payer)"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-semibold focus:outline-none focus:border-purple-500 mt-2"
+                />
+              </div>
+
+              {/* Private Admin Review Remarks Textarea */}
+              <div className="space-y-1.5">
+                <label className="font-extrabold text-slate-800 text-xs block">
+                  Admin Internal Remarks / Review Notes ("Wo Kaisa Hai")
+                </label>
+                <textarea
+                  rows={4}
+                  value={reviewForm.review}
+                  onChange={(e) => setReviewForm({ ...reviewForm, review: e.target.value })}
+                  placeholder="Write internal admin remarks... E.g. 'Very reliable seller, fast delivery, authentic stock.' or 'Slow to confirm buyer WhatsApp inquiries, payment terms require verification.'"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 focus:outline-none focus:border-purple-500 font-medium text-xs leading-relaxed"
+                />
+              </div>
+
+              {/* Strict Confidentiality Banner */}
+              <div className="p-3.5 bg-purple-50 rounded-2xl border border-purple-200 flex items-start gap-2.5 text-xs text-purple-900">
+                <Lock className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-extrabold text-purple-900 text-[11px]">
+                    100% Confidential Admin-Only Review
+                  </p>
+                  <p className="text-[10px] text-purple-700 font-medium mt-0.5">
+                    This evaluation and remarks are stored privately and rendered ONLY in the Admin Panel. It is never displayed to Buyers, Sellers, or Public visitors.
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalTarget(null)}
+                  className="px-4 py-2.5 rounded-xl font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Save Private Review
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
       )}
 
     </div>

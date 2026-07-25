@@ -10,7 +10,11 @@ export const INITIAL_SELLERS = [
     category: 'Industrial Machinery',
     status: 'Verified',
     totalProducts: 2,
-    joinedDate: '2026-06-15'
+    joinedDate: '2026-06-15',
+    adminRating: 5,
+    adminTag: 'Highly Reliable / Top Seller',
+    adminReview: 'Excellent product quality and prompt dispatch. Highly trusted manufacturer in Nepal/India region.',
+    adminReviewUpdatedAt: '2026-07-20'
   },
   {
     id: 'seller-105',
@@ -23,7 +27,11 @@ export const INITIAL_SELLERS = [
     category: 'Medical & Healthcare',
     status: 'Verified',
     totalProducts: 1,
-    joinedDate: '2026-07-01'
+    joinedDate: '2026-07-01',
+    adminRating: 5,
+    adminTag: 'Verified Supplier',
+    adminReview: 'Medical certified items, clear invoicing, zero buyer complaints reported.',
+    adminReviewUpdatedAt: '2026-07-21'
   },
   {
     id: 'seller-102',
@@ -36,7 +44,11 @@ export const INITIAL_SELLERS = [
     category: 'Agriculture & Food',
     status: 'Verified',
     totalProducts: 1,
-    joinedDate: '2026-07-05'
+    joinedDate: '2026-07-05',
+    adminRating: 4,
+    adminTag: 'Verified Supplier',
+    adminReview: 'Good quality organic herbs, occasionally takes 24 hours to confirm export orders.',
+    adminReviewUpdatedAt: '2026-07-15'
   },
   {
     id: 'seller-103',
@@ -49,7 +61,11 @@ export const INITIAL_SELLERS = [
     category: 'Electronics & Solar',
     status: 'Pending Verification',
     totalProducts: 1,
-    joinedDate: '2026-07-18'
+    joinedDate: '2026-07-18',
+    adminRating: 3,
+    adminTag: 'Needs Monitoring',
+    adminReview: 'Newly listed wholesaler, GSTIN tax document verification in progress.',
+    adminReviewUpdatedAt: '2026-07-19'
   }
 ];
 
@@ -62,7 +78,11 @@ export const INITIAL_BUYERS = [
     location: 'Biratnagar, Nepal',
     interest: 'Industrial Machinery & Packaging',
     inquiriesSent: 8,
-    joinedDate: '2026-06-20'
+    joinedDate: '2026-06-20',
+    adminRating: 5,
+    adminTag: 'VIP High Volume Buyer',
+    adminReview: 'High volume wholesale buyer. Always executes bulk orders with prompt bank transfer payments.',
+    adminReviewUpdatedAt: '2026-07-22'
   },
   {
     id: 'buyer-202',
@@ -72,7 +92,11 @@ export const INITIAL_BUYERS = [
     location: 'Lalitpur, Nepal',
     interest: 'Medical Syringes & Surgical Disposables',
     inquiriesSent: 14,
-    joinedDate: '2026-07-02'
+    joinedDate: '2026-07-02',
+    adminRating: 5,
+    adminTag: 'Genuine & Active Buyer',
+    adminReview: 'Very active medical supply purchaser, fast responses to seller quotes.',
+    adminReviewUpdatedAt: '2026-07-23'
   },
   {
     id: 'buyer-203',
@@ -82,7 +106,11 @@ export const INITIAL_BUYERS = [
     location: 'Butwal, Nepal',
     interest: 'Large Cardamom & Organic Herbs',
     inquiriesSent: 5,
-    joinedDate: '2026-07-10'
+    joinedDate: '2026-07-10',
+    adminRating: 4,
+    adminTag: 'Genuine & Active Buyer',
+    adminReview: 'Reliable agro buyer, sends clear specs and MOQ expectations.',
+    adminReviewUpdatedAt: '2026-07-18'
   }
 ];
 

@@ -214,6 +214,42 @@ export const AppProvider = ({ children }) => {
     showToast('Buyer removed from ERP directory.', 'warning');
   };
 
+  const updateSellerAdminReview = (sellerId, { adminReview, adminRating, adminTag }) => {
+    const updated = (sellers || []).map(s => {
+      if (s.id === sellerId) {
+        return {
+          ...s,
+          adminReview: adminReview !== undefined ? adminReview : s.adminReview,
+          adminRating: adminRating !== undefined ? Number(adminRating) : s.adminRating,
+          adminTag: adminTag !== undefined ? adminTag : s.adminTag,
+          adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
+        };
+      }
+      return s;
+    });
+    setSellers(updated);
+    localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(updated));
+    showToast('Private Admin Review updated for Seller!', 'success');
+  };
+
+  const updateBuyerAdminReview = (buyerId, { adminReview, adminRating, adminTag }) => {
+    const updated = (buyers || []).map(b => {
+      if (b.id === buyerId) {
+        return {
+          ...b,
+          adminReview: adminReview !== undefined ? adminReview : b.adminReview,
+          adminRating: adminRating !== undefined ? Number(adminRating) : b.adminRating,
+          adminTag: adminTag !== undefined ? adminTag : b.adminTag,
+          adminReviewUpdatedAt: new Date().toISOString().split('T')[0]
+        };
+      }
+      return b;
+    });
+    setBuyers(updated);
+    localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(updated));
+    showToast('Private Admin Review updated for Buyer!', 'success');
+  };
+
   // Sales Journal Ledger Actions
   const addSalesJournalEntry = (entryData) => {
     const newEntry = {
@@ -338,6 +374,8 @@ export const AppProvider = ({ children }) => {
       verifySeller,
       deleteSeller,
       deleteBuyer,
+      updateSellerAdminReview,
+      updateBuyerAdminReview,
       addSalesJournalEntry,
       deleteSalesJournalEntry,
       products: products || INITIAL_PRODUCTS,
