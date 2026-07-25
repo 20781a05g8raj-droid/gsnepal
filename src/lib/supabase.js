@@ -315,8 +315,8 @@ export const fetchSupabaseProducts = async () => {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-    if (!error && Array.isArray(data) && data.length > 0) {
-      return data.map(p => ({ ...p, seller_phone: DEFAULT_WHATSAPP_NUMBER }));
+    if (!error && Array.isArray(data)) {
+      return data.map(p => ({ ...p, seller_phone: p.seller_phone || DEFAULT_WHATSAPP_NUMBER }));
     }
   } catch (e) {
     console.warn('Failed fetching products from Supabase:', e);
@@ -329,7 +329,7 @@ export const fetchSupabaseSellers = async () => {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase.from('sellers').select('*');
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return data.map(mapSellerFromDb);
     }
   } catch (e) {
@@ -343,7 +343,7 @@ export const fetchSupabaseBuyers = async () => {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase.from('buyers').select('*');
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return data.map(mapBuyerFromDb);
     }
   } catch (e) {
@@ -357,7 +357,7 @@ export const fetchSupabaseSalesJournal = async () => {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase.from('sales_journal').select('*').order('created_at', { ascending: false });
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return data.map(mapJournalFromDb);
     }
   } catch (e) {
@@ -371,7 +371,7 @@ export const fetchSupabaseInquiries = async () => {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase.from('inquiries').select('*').order('created_at', { ascending: false });
-    if (!error && Array.isArray(data) && data.length > 0) {
+    if (!error && Array.isArray(data)) {
       return data.map(mapInquiryFromDb);
     }
   } catch (e) {

@@ -43,52 +43,46 @@ export const AppProvider = ({ children }) => {
     return null;
   });
 
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_PRODUCTS);
+      if (data) return JSON.parse(data);
+    } catch (e) {}
+    return [];
+  });
   
-  // Robust ERP Data States
+  // Robust ERP Data States - strictly synced from Database
   const [sellers, setSellers] = useState(() => {
     try {
       const data = localStorage.getItem(STORAGE_KEY_SELLERS);
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (data) return JSON.parse(data);
     } catch (e) {}
-    return INITIAL_SELLERS;
+    return [];
   });
 
   const [buyers, setBuyers] = useState(() => {
     try {
       const data = localStorage.getItem(STORAGE_KEY_BUYERS);
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (data) return JSON.parse(data);
     } catch (e) {}
-    return INITIAL_BUYERS;
+    return [];
   });
 
   const [inquiries, setInquiries] = useState(() => {
     try {
       const data = localStorage.getItem(STORAGE_KEY_INQUIRIES);
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (data) return JSON.parse(data);
     } catch (e) {}
-    return INITIAL_INQUIRIES;
+    return [];
   });
 
-  // Seller Sales Journal State
+  // Seller Sales Journal State - strictly synced from Database
   const [salesJournal, setSalesJournal] = useState(() => {
     try {
       const data = localStorage.getItem(STORAGE_KEY_SALES_JOURNAL);
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      if (data) return JSON.parse(data);
     } catch (e) {}
-    return INITIAL_SALES_JOURNAL;
+    return [];
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,59 +101,45 @@ export const AppProvider = ({ children }) => {
     }, 4000);
   };
 
-  // Synchronize All Datasets with Supabase Backend on Mount
+  // Synchronize ONLY Database Data on Mount
   useEffect(() => {
     const loadedConfig = getStoredConfig();
     setSupabaseConfig(loadedConfig);
 
     const syncSupabaseBackend = async () => {
-      // 1. Products Sync
+      // 1. Products Sync - ONLY Supabase Database Records
       const spProducts = await fetchSupabaseProducts();
-      if (spProducts && spProducts.length > 0) {
+      if (spProducts !== null) {
         setProducts(spProducts);
         saveStoredProducts(spProducts);
-      } else {
-        const loaded = getStoredProducts();
-        const initialProds = Array.isArray(loaded) && loaded.length > 0 ? loaded : INITIAL_PRODUCTS;
-        setProducts(initialProds);
-        // Seed initial products to Supabase if empty
-        initialProds.forEach(p => upsertSupabaseProduct(p));
       }
 
-      // 2. Sellers Sync
+      // 2. Sellers Sync - ONLY Supabase Database Records
       const spSellers = await fetchSupabaseSellers();
-      if (spSellers && spSellers.length > 0) {
+      if (spSellers !== null) {
         setSellers(spSellers);
         localStorage.setItem(STORAGE_KEY_SELLERS, JSON.stringify(spSellers));
-      } else {
-        INITIAL_SELLERS.forEach(s => upsertSupabaseSeller(s));
       }
 
-      // 3. Buyers Sync
+      // 3. Buyers Sync - ONLY Supabase Database Records
       const spBuyers = await fetchSupabaseBuyers();
-      if (spBuyers && spBuyers.length > 0) {
+      if (spBuyers !== null) {
         setBuyers(spBuyers);
         localStorage.setItem(STORAGE_KEY_BUYERS, JSON.stringify(spBuyers));
-      } else {
-        INITIAL_BUYERS.forEach(b => upsertSupabaseBuyer(b));
       }
 
-      // 4. Sales Journal Sync
+      // 4. Sales Journal Sync - ONLY Supabase Database Records
       const spJournal = await fetchSupabaseSalesJournal();
-      if (spJournal && spJournal.length > 0) {
+      if (spJournal !== null) {
         setSalesJournal(spJournal);
         localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(spJournal));
-      } else {
-        INITIAL_SALES_JOURNAL.forEach(j => upsertSupabaseSalesJournal(j));
       }
 
-      // 5. WhatsApp Inquiries Sync
+      // 5. WhatsApp Inquiries Sync - ONLY Supabase Database Records
       const spInquiries = await fetchSupabaseInquiries();
-      if (spInquiries && spInquiries.length > 0) {
+      if (spInquiries !== null) {
         setInquiries(spInquiries);
         localStorage.setItem(STORAGE_KEY_INQUIRIES, JSON.stringify(spInquiries));
-      } else {
-        INITIAL_INQUIRIES.forEach(i => upsertSupabaseInquiry(i));
       }
     };
 
@@ -504,10 +484,10 @@ export const AppProvider = ({ children }) => {
       loginUser,
       registerUser,
       logoutUser,
-      sellers: sellers || INITIAL_SELLERS,
-      buyers: buyers || INITIAL_BUYERS,
-      inquiries: inquiries || INITIAL_INQUIRIES,
-      salesJournal: salesJournal || INITIAL_SALES_JOURNAL,
+      sellers,
+      buyers,
+      inquiries,
+      salesJournal,
       verifySeller,
       deleteSeller,
       deleteBuyer,
@@ -516,7 +496,7 @@ export const AppProvider = ({ children }) => {
       addSalesJournalEntry,
       deleteSalesJournalEntry,
       addInquiry,
-      products: products || INITIAL_PRODUCTS,
+      products,
       addProduct,
       updateProduct,
       approveProduct,
