@@ -191,7 +191,7 @@ export const getSupabaseClient = () => {
 // Supabase Authentication Backend Helpers
 export const signInWithSupabaseAuth = async (email, password) => {
   const supabase = getSupabaseClient();
-  if (!supabase) return { data: null, error: new Error('Supabase backend not connected.') };
+  if (!supabase) return { data: null, error: new Error('Supabase environment variables missing on Vercel. Please add VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY in Vercel Settings -> Environment Variables.') };
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
@@ -205,7 +205,7 @@ export const signInWithSupabaseAuth = async (email, password) => {
 
 export const signUpWithSupabaseAuth = async (email, password, metadata = {}) => {
   const supabase = getSupabaseClient();
-  if (!supabase) return { data: null, error: new Error('Supabase backend not connected.') };
+  if (!supabase) return { data: null, error: new Error('Supabase environment variables missing on Vercel. Please add VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY in Vercel Settings -> Environment Variables.') };
   try {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
