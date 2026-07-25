@@ -52,24 +52,35 @@ export default function AuthModal() {
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!loginEmail) return;
-    
-    const role = loginEmail.toLowerCase().includes('admin') ? 'admin' : (loginEmail.toLowerCase().includes('seller') ? 'seller' : 'buyer');
-    
+    if (!loginEmail || !loginPassword) {
+      setErrorMsg('Please enter both Email and Password.');
+      return;
+    }
+
+    const secretAdminEmail = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_EMAIL) || 'admin@wsnepal.com';
+    const secretAdminPass = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ADMIN_PASSWORD) || 'admin123';
+
+    const isAdminAttempt = loginEmail.toLowerCase().trim() === secretAdminEmail.toLowerCase().trim() || loginEmail.toLowerCase().includes('admin');
+
+    if (isAdminAttempt) {
+      if (loginPassword !== secretAdminPass) {
+        setErrorMsg('🔒 Incorrect Secret Admin Password! Access Denied.');
+        return;
+      }
+      loginUser({
+        email: secretAdminEmail,
+        name: 'Super Admin ERP',
+        role: 'admin'
+      });
+      setIsAuthModalOpen(false);
+      return;
+    }
+
+    const assignedRole = loginEmail.toLowerCase().includes('seller') ? 'seller' : 'buyer';
     loginUser({
       email: loginEmail,
       name: loginEmail.split('@')[0],
-      role: role
-    });
-    setIsAuthModalOpen(false);
-  };
-
-  const handleAdminDirectLogin = () => {
-    setErrorMsg('');
-    loginUser({
-      email: 'admin@wsnepal.com',
-      name: 'Super Admin ERP',
-      role: 'admin'
+      role: assignedRole
     });
     setIsAuthModalOpen(false);
   };
@@ -515,21 +526,15 @@ export default function AuthModal() {
                 </div>
               </div>
 
-              {/* Direct Super Admin ERP Access Option inside Log In tab */}
-              <div className="p-3.5 bg-purple-50 rounded-2xl border border-purple-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-purple-900 flex items-center gap-1">
-                    <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin ERP Authentication
-                  </span>
+              {/* Secret Admin Credentials Notice */}
+              <div className="p-3 bg-purple-50 rounded-2xl border border-purple-200 text-[11px] text-purple-900 font-medium space-y-1">
+                <div className="flex items-center gap-1 font-bold text-purple-900">
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                  <span>Admin Authentication</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAdminDirectLogin}
-                  className="w-full py-2 rounded-xl font-bold text-[11px] bg-purple-600 hover:bg-purple-700 text-white shadow-sm flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <span>Log In as Super Admin ERP</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <p className="text-purple-700 leading-snug">
+                  Admin login requires Secret Email <code className="font-bold bg-purple-100 px-1 py-0.5 rounded text-purple-900">admin@wsnepal.com</code> and Secret Password configured in <code className="font-bold bg-purple-100 px-1 py-0.5 rounded text-purple-900">.env</code>.
+                </p>
               </div>
 
               <button

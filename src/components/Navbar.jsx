@@ -192,15 +192,6 @@ export default function Navbar() {
                 <span>Login / Register</span>
               </button>
             )}
-
-            {/* Supabase Config Button */}
-            <button
-              onClick={() => setIsConfigModalOpen(true)}
-              className="p-2.5 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all"
-              title="Supabase Config & SQL Schema"
-            >
-              <Database className="w-4 h-4 text-indigo-600" />
-            </button>
           </div>
 
         </div>
