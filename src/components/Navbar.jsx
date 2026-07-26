@@ -31,6 +31,7 @@ export default function Navbar() {
     setSelectedCategory,
     setIsAddModalOpen,
     setIsAuthModalOpen,
+    openAuthModal,
     toggleUserRole,
     role
   } = useApp();
@@ -168,7 +169,7 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   if (!userProfile?.isLoggedIn) {
-                    setIsAuthModalOpen(true);
+                    openAuthModal('seller');
                   } else {
                     toggleUserRole();
                   }
@@ -247,7 +248,7 @@ export default function Navbar() {
           <button
             onClick={() => {
               if (!userProfile?.isLoggedIn) {
-                setIsAuthModalOpen(true);
+                openAuthModal('seller');
               } else {
                 toggleUserRole();
               }

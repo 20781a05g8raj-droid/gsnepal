@@ -96,8 +96,14 @@ export const AppProvider = ({ children }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalRole, setAuthModalRole] = useState('seller');
   const [supabaseConfig, setSupabaseConfig] = useState({ url: '', key: '' });
   const [toastMessage, setToastMessage] = useState(null);
+
+  const openAuthModal = (defaultRole = 'seller') => {
+    setAuthModalRole(defaultRole);
+    setIsAuthModalOpen(true);
+  };
 
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type, id: Date.now() });
@@ -641,7 +647,17 @@ export const AppProvider = ({ children }) => {
   };
 
   const toggleUserRole = () => {
-    const currentRole = userProfile?.role || role || 'buyer';
+    // Unauthenticated user -> MUST REGISTER / LOG IN first (No demo user generation)
+    if (!userProfile || !userProfile.isLoggedIn) {
+      const targetRole = role === 'seller' ? 'buyer' : 'seller';
+      setAuthModalRole(targetRole);
+      setIsAuthModalOpen(true);
+      showToast(`Please log in or register as a ${targetRole.toUpperCase()} to continue.`, 'info');
+      return;
+    }
+
+    // Logged in user -> Switch active mode
+    const currentRole = userProfile.role || role || 'buyer';
     const targetRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
     setRole(targetRole);
@@ -652,26 +668,12 @@ export const AppProvider = ({ children }) => {
       setActiveNav('catalog');
     }
 
-    if (userProfile && userProfile.isLoggedIn) {
-      const updatedProfile = {
-        ...userProfile,
-        role: targetRole
-      };
-      setUserProfile(updatedProfile);
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updatedProfile));
-    } else {
-      const demoProfile = {
-        id: targetRole === 'seller' ? 'seller-101' : 'buyer-' + Date.now().toString().slice(-4),
-        name: targetRole === 'seller' ? 'Demo Wholesaler Seller' : 'Demo Buyer',
-        email: targetRole === 'seller' ? 'seller@wsnepal.b2b' : 'buyer@wsnepal.b2b',
-        role: targetRole,
-        phone: DEFAULT_WHATSAPP_NUMBER,
-        location: 'Kathmandu, Nepal',
-        isLoggedIn: true
-      };
-      setUserProfile(demoProfile);
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(demoProfile));
-    }
+    const updatedProfile = {
+      ...userProfile,
+      role: targetRole
+    };
+    setUserProfile(updatedProfile);
+    localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updatedProfile));
 
     showToast(`Account mode switched: You are now a ${targetRole.toUpperCase()}!`, 'success');
   };
@@ -726,6 +728,9 @@ export const AppProvider = ({ children }) => {
       setIsConfigModalOpen,
       isAuthModalOpen,
       setIsAuthModalOpen,
+      authModalRole,
+      setAuthModalRole,
+      openAuthModal,
       supabaseConfig,
       saveConfig,
       toastMessage,

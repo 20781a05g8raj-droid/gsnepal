@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function Footer() {
-  const { setActiveNav, setIsAuthModalOpen, userProfile, role, toggleUserRole } = useApp();
+  const { setActiveNav, setIsAuthModalOpen, openAuthModal, userProfile, role, toggleUserRole } = useApp();
 
   const currentRole = userProfile?.role || role || 'buyer';
   const isSellerMode = currentRole === 'seller';
@@ -118,12 +118,12 @@ export default function Footer() {
                 <button
                   onClick={() => {
                     if (!userProfile?.isLoggedIn) {
-                      setIsAuthModalOpen(true);
+                      openAuthModal('seller');
                     } else {
                       setActiveNav('seller');
                     }
                   }}
-                  className="hover:text-amber-300 transition-colors flex items-center gap-1.5 group text-left"
+                  className="hover:text-amber-300 transition-colors flex items-center gap-1.5 group text-left cursor-pointer"
                 >
                   <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
                   <span>Seller Onboarding & Registration</span>
@@ -133,10 +133,10 @@ export default function Footer() {
                 <button
                   onClick={() => {
                     if (!userProfile?.isLoggedIn) {
-                      setIsAuthModalOpen(true);
+                      openAuthModal('buyer');
                     }
                   }}
-                  className="hover:text-amber-300 transition-colors flex items-center gap-1.5 group text-left"
+                  className="hover:text-amber-300 transition-colors flex items-center gap-1.5 group text-left cursor-pointer"
                 >
                   <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
                   <span>Buyer Trade Account</span>

@@ -100,7 +100,8 @@ export default function BuyerCatalog() {
     setSelectedCategory,
     setSelectedProductModal,
     showToast,
-    toggleUserRole
+    toggleUserRole,
+    openAuthModal
   } = useApp();
 
   const approvedProducts = (products || []).filter(p => p && p.is_approved);
@@ -215,7 +216,13 @@ export default function BuyerCatalog() {
               </button>
 
               <button
-                onClick={toggleUserRole}
+                onClick={() => {
+                  if (!userProfile?.isLoggedIn) {
+                    openAuthModal('seller');
+                  } else {
+                    toggleUserRole();
+                  }
+                }}
                 className="px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-700/80 shadow-lg transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Factory className="w-4 h-4 text-amber-400" />
