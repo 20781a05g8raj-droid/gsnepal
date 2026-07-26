@@ -641,7 +641,17 @@ export const AppProvider = ({ children }) => {
   };
 
   const toggleUserRole = () => {
-    const currentRole = userProfile?.role || role || 'buyer';
+    // Unauthenticated visitor -> MUST REGISTER OR LOG IN (No Demo User Generation)
+    if (!userProfile || !userProfile.isLoggedIn) {
+      const targetRole = role === 'seller' ? 'buyer' : 'seller';
+      setAuthModalRole(targetRole);
+      setIsAuthModalOpen(true);
+      showToast(`Please log in or register as a ${targetRole.toUpperCase()} to access this section.`, 'info');
+      return;
+    }
+
+    // Authenticated registered user -> Switch active mode
+    const currentRole = userProfile.role || role || 'buyer';
     const targetRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
     setRole(targetRole);
@@ -652,28 +662,14 @@ export const AppProvider = ({ children }) => {
       setActiveNav('catalog');
     }
 
-    if (userProfile && userProfile.isLoggedIn) {
-      const updatedProfile = {
-        ...userProfile,
-        role: targetRole
-      };
-      setUserProfile(updatedProfile);
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updatedProfile));
-    } else {
-      const demoProfile = {
-        id: targetRole === 'seller' ? 'seller-101' : 'buyer-' + Date.now().toString().slice(-4),
-        name: targetRole === 'seller' ? 'Demo Wholesaler Seller' : 'Demo Buyer',
-        email: targetRole === 'seller' ? 'seller@wsnepal.b2b' : 'buyer@wsnepal.b2b',
-        role: targetRole,
-        phone: DEFAULT_WHATSAPP_NUMBER,
-        location: 'Kathmandu, Nepal',
-        isLoggedIn: true
-      };
-      setUserProfile(demoProfile);
-      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(demoProfile));
-    }
+    const updatedProfile = {
+      ...userProfile,
+      role: targetRole
+    };
+    setUserProfile(updatedProfile);
+    localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updatedProfile));
 
-    showToast(`Account mode switched: You are now a ${targetRole.toUpperCase()}!`, 'success');
+    showToast(`Account mode switched to ${targetRole.toUpperCase()}`, 'success');
   };
 
   const saveConfig = (url, key) => {
