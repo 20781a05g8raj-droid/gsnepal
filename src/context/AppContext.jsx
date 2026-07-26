@@ -640,6 +640,42 @@ export const AppProvider = ({ children }) => {
     showToast('Reset ERP dataset & resynced to Supabase initial state.', 'info');
   };
 
+  const toggleUserRole = () => {
+    const currentRole = userProfile?.role || role || 'buyer';
+    const targetRole = currentRole === 'seller' ? 'buyer' : 'seller';
+
+    setRole(targetRole);
+
+    if (targetRole === 'seller') {
+      setActiveNav('seller');
+    } else {
+      setActiveNav('catalog');
+    }
+
+    if (userProfile && userProfile.isLoggedIn) {
+      const updatedProfile = {
+        ...userProfile,
+        role: targetRole
+      };
+      setUserProfile(updatedProfile);
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(updatedProfile));
+    } else {
+      const demoProfile = {
+        id: targetRole === 'seller' ? 'seller-101' : 'buyer-' + Date.now().toString().slice(-4),
+        name: targetRole === 'seller' ? 'Demo Wholesaler Seller' : 'Demo Buyer',
+        email: targetRole === 'seller' ? 'seller@wsnepal.b2b' : 'buyer@wsnepal.b2b',
+        role: targetRole,
+        phone: DEFAULT_WHATSAPP_NUMBER,
+        location: 'Kathmandu, Nepal',
+        isLoggedIn: true
+      };
+      setUserProfile(demoProfile);
+      localStorage.setItem(STORAGE_KEY_AUTH, JSON.stringify(demoProfile));
+    }
+
+    showToast(`Account mode switched: You are now a ${targetRole.toUpperCase()}!`, 'success');
+  };
+
   const saveConfig = (url, key) => {
     const newConf = { url, key };
     setSupabaseConfig(newConf);
@@ -654,6 +690,7 @@ export const AppProvider = ({ children }) => {
       setActiveNav,
       role,
       setRole,
+      toggleUserRole,
       userProfile,
       loginUser,
       registerUser,

@@ -13,11 +13,16 @@ import {
   ArrowRight,
   Lock,
   Building2,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw,
+  UserCheck
 } from 'lucide-react';
 
 export default function Footer() {
-  const { setActiveNav, setIsAuthModalOpen, userProfile } = useApp();
+  const { setActiveNav, setIsAuthModalOpen, userProfile, role, toggleUserRole } = useApp();
+
+  const currentRole = userProfile?.role || role || 'buyer';
+  const isSellerMode = currentRole === 'seller';
 
   return (
     <footer className="relative bg-slate-950 text-slate-300 mt-20 overflow-hidden border-t border-slate-800/80">
@@ -66,6 +71,21 @@ export default function Footer() {
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
                 RLS Data Security
               </span>
+            </div>
+
+            {/* Active Mode Status Badge with Quick Toggle */}
+            <div className="pt-3 border-t border-slate-900 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+                <span>Active Mode: <strong className="text-white uppercase font-bold">{currentRole}</strong></span>
+              </div>
+
+              <button
+                onClick={toggleUserRole}
+                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <span>Change to {isSellerMode ? 'Buyer' : 'Seller'}</span>
+              </button>
             </div>
           </div>
 
@@ -122,6 +142,29 @@ export default function Footer() {
                   <span>Buyer Trade Account</span>
                 </button>
               </li>
+
+              {/* Instant Role Switcher Button */}
+              <li className="pt-2">
+                <button
+                  onClick={toggleUserRole}
+                  className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 border border-indigo-500/40 hover:border-amber-400/80 text-white font-bold text-xs shadow-lg shadow-indigo-900/30 transition-all group cursor-pointer"
+                  title="Switch between Buyer and Seller mode"
+                >
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-amber-400 group-hover:rotate-180 transition-transform duration-500 shrink-0" />
+                    <span className="text-left font-extrabold text-[11px] leading-tight">
+                      {isSellerMode ? 'Switch to Buyer Mode' : 'Switch to Seller Mode'}
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 border ${
+                    isSellerMode 
+                      ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' 
+                      : 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40'
+                  }`}>
+                    {isSellerMode ? 'Seller ➔ Buyer' : 'Buyer ➔ Seller'}
+                  </span>
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -173,7 +216,7 @@ export default function Footer() {
               </p>
 
               <a
-                href="https://wa.me/9779800000000?text=Hello%20WS%20Nepal%20Trade%20Desk,%20I%20have%20a%20wholesale%20trade%20inquiry."
+                href="https://wa.me/9779821863885?text=Hello%20WS%20Nepal%20Trade%20Desk,%20I%20have%20a%20wholesale%20trade%20inquiry."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
