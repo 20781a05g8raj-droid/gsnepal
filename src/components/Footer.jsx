@@ -48,7 +48,7 @@ export default function Footer() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-xl tracking-tight text-white font-serif">WS NEPAL</span>
+                  <span className="font-serif-heading font-extrabold text-xl tracking-tight text-white">GS NEPAL</span>
                   <span className="text-[10px] bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-md shadow-sm">
                     B2B LUXURY
                   </span>
@@ -216,7 +216,7 @@ export default function Footer() {
               </p>
 
               <a
-                href="https://wa.me/9779821863885?text=Hello%20WS%20Nepal%20Trade%20Desk,%20I%20have%20a%20wholesale%20trade%20inquiry."
+                href="https://wa.me/9779821863885?text=Hello%20GS%20Nepal%20Trade%20Desk,%20I%20have%20a%20wholesale%20trade%20inquiry."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
@@ -233,7 +233,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                <span>trade@wsnepal.b2b</span>
+                <span>trade@gsnepal.b2b</span>
               </div>
             </div>
           </div>
@@ -243,7 +243,7 @@ export default function Footer() {
         {/* Bottom Divider & Credits */}
         <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-center sm:text-left">
-            <p>© 2026 WS Nepal B2B Marketplace. All rights reserved.</p>
+            <p>© 2026 GS Nepal B2B Marketplace. All rights reserved.</p>
             <div className="flex items-center gap-3 text-[11px]">
               <span className="hover:text-slate-300 transition-colors cursor-pointer">Privacy Policy</span>
               <span>•</span>

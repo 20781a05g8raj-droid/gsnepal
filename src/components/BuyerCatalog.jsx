@@ -10,54 +10,83 @@ import {
   Filter,
   Zap,
   Package,
-  Image as ImageIcon,
   Grid,
   CheckCircle2,
-  X
+  X,
+  Award,
+  Truck,
+  FileCheck,
+  Search,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  Cpu,
+  Layers,
+  Factory
 } from 'lucide-react';
 import { PRESET_CATEGORIES, DEFAULT_WHATSAPP_NUMBER } from '../lib/supabase';
 
-// Visual Image Category Cards Definition
-const CATEGORY_CARDS_DATA = [
+// Bento Box Category Definitions with Varied Sizes & High Quality Visual Images
+const BENTO_CATEGORIES = [
   {
-    name: 'All Categories',
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Explore Full B2B Catalog'
-  },
-  {
-    name: 'Medical & Healthcare',
-    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Syringes & Surgical Supplies'
-  },
-  {
+    id: 'cat-machinery',
     name: 'Industrial Machinery',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Paper Cup & Plastic Units'
+    subtitle: 'Paper Cup Units, Hydraulic Presses & Packaging Lines',
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+    size: 'lg:col-span-2 lg:row-span-2',
+    accent: 'Industrial High-Demand',
+    badgeColor: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
+    tag: 'Factory Direct'
   },
   {
+    id: 'cat-medical',
+    name: 'Medical & Healthcare',
+    subtitle: 'ISO 13485 Sterile Syringes, Disposables & Hospital Supplies',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80',
+    size: 'lg:col-span-2 lg:row-span-1',
+    accent: 'Certified Sterile',
+    badgeColor: 'bg-emerald-400/20 text-emerald-300 border-emerald-400/40',
+    tag: 'Hospital Grade'
+  },
+  {
+    id: 'cat-agriculture',
     name: 'Agriculture & Food',
+    subtitle: 'Bulk Himalayan Large Cardamom, Herbs & Organic Condiments',
     image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Himalayan Spices & Herbs'
+    size: 'lg:col-span-1 lg:row-span-1',
+    accent: 'Export Quality',
+    badgeColor: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
+    tag: 'Direct Farm'
   },
   {
+    id: 'cat-solar',
     name: 'Electronics & Solar',
+    subtitle: 'Smart IoT 60A MPPT Controllers & Heavy Duty Solar Inverters',
     image: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Solar Panels & Controllers'
+    size: 'lg:col-span-1 lg:row-span-1',
+    accent: 'High Conversion',
+    badgeColor: 'bg-indigo-400/20 text-indigo-300 border-indigo-400/40',
+    tag: 'IoT Tech'
   },
   {
+    id: 'cat-textiles',
     name: 'Textiles & Apparel',
+    subtitle: 'Bulk Cashmere, Pashmina, Woolens & Industrial Yarns',
     image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Fabrics, Shawls & Garments'
+    size: 'lg:col-span-1 lg:row-span-1',
+    accent: 'Himalayan Weave',
+    badgeColor: 'bg-purple-400/20 text-purple-300 border-purple-400/40',
+    tag: 'Wholesale'
   },
   {
-    name: 'Construction Materials',
-    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Steel, Cement & Roofing'
-  },
-  {
+    id: 'cat-chemicals',
     name: 'Chemicals & Plastics',
+    subtitle: 'Industrial Polymers, Solvents & Packaging Raw Materials',
     image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=800&q=80',
-    subtitle: 'Polymers & Industrial Solvents'
+    size: 'lg:col-span-1 lg:row-span-1',
+    accent: 'Industrial Grade',
+    badgeColor: 'bg-teal-400/20 text-teal-300 border-teal-400/40',
+    tag: 'Bulk Supply'
   }
 ];
 
@@ -66,24 +95,14 @@ export default function BuyerCatalog() {
     products = [],
     userProfile,
     searchQuery,
+    setSearchQuery,
     selectedCategory,
     setSelectedCategory,
     setSelectedProductModal,
-    showToast
+    showToast,
+    toggleUserRole
   } = useApp();
 
-  // Parallax Scroll Offset State
-  const [scrollY, setScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Buyer sees ONLY approved products per Supabase RLS documentation policy
   const approvedProducts = (products || []).filter(p => p && p.is_approved);
 
   const filteredProducts = approvedProducts.filter(p => {
@@ -104,14 +123,13 @@ export default function BuyerCatalog() {
     const prodMoq = product ? product.moq : 'Bulk Order';
     const prodCategory = product ? `${product.category} (${product.subcategory || 'General'})` : 'B2B Catalog';
 
-    // Dynamic Inquirer details based on currently LOGGED-IN user profile
-    const buyerName = (userProfile && userProfile.isLoggedIn) ? userProfile.name : 'Guest Visitor';
+    const buyerName = (userProfile && userProfile.isLoggedIn) ? userProfile.name : 'Guest Trade Buyer';
     const buyerEmail = (userProfile && userProfile.isLoggedIn) ? userProfile.email : 'N/A';
     const buyerId = (userProfile && userProfile.isLoggedIn) ? userProfile.id : 'Guest';
     const buyerRole = (userProfile && userProfile.isLoggedIn) ? userProfile.role.toUpperCase() : 'BUYER';
     const buyerPhone = (userProfile && userProfile.isLoggedIn && userProfile.phone) ? userProfile.phone : 'N/A';
 
-    const message = `Hello WS Nepal B2B Team / ${product?.seller_name || 'Supplier'},\n\n` +
+    const message = `Hello GS Nepal B2B Team / ${product?.seller_name || 'Supplier'},\n\n` +
       `I want to inquire about bulk wholesale sourcing:\n\n` +
       `*Product:* ${prodName}\n` +
       `*Category:* ${prodCategory}\n` +
@@ -128,136 +146,238 @@ export default function BuyerCatalog() {
     
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
-    if (showToast) showToast(`WhatsApp inquiry prepared for ${buyerName} (+${phone})`, 'success');
+    if (showToast) showToast(`WhatsApp trade lead dispatched for ${buyerName} (+${phone})`, 'success');
   };
 
   return (
-    <div className="space-y-4 sm:space-y-8 pb-16">
+    <div className="space-y-16 sm:space-y-24 pb-20">
       
-      {/* Compact Responsive Hero Section for Mobile & Desktop */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 border border-indigo-200 p-3.5 sm:p-10 shadow-2xl min-h-0 sm:min-h-[380px] flex items-center">
+      {/* ========================================================================= */}
+      {/* 1. ASYMMETRIC HERO SECTION: High-End Industrial Sourcing Value Proposition */}
+      {/* ========================================================================= */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-12 shadow-2xl">
         
-        {/* Parallax Background Banner Image */}
-        <div 
-          className="absolute inset-0 w-full h-[135%] -top-[15%] pointer-events-none transition-transform ease-out duration-100 bg-cover bg-center opacity-90"
-          style={{
-            transform: `translate3d(0, ${scrollY * 0.22}px, 0)`,
-            backgroundImage: `url('/b2b_hero_background.png')`
-          }}
-        />
+        {/* Decorative Grid Lines & Ambient Glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:32px_32px] opacity-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Ambient Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-900/40" />
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          
+          {/* LEFT COLUMN: Asymmetric Value Proposition */}
+          <div className="lg:col-span-7 space-y-6 text-white">
+            
+            {/* Top Authority Tag */}
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-900 border border-amber-500/30 shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-amber-300 font-extrabold text-xs tracking-wider uppercase">
+                Nepalese Industrial & Cross-Border B2B Sourcing
+              </span>
+            </div>
 
-        {/* Content Box */}
-        <div className="relative z-10 max-w-3xl space-y-2 sm:space-y-5 text-white">
-          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-indigo-600/40 text-indigo-200 text-[9px] sm:text-xs font-bold border border-indigo-400/40 backdrop-blur-md shadow-md">
-              <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-300" />
-              <span>{approvedProducts.length}+ Products</span>
-            </span>
+            {/* Main Headline: Modern Serif + High Contrast */}
+            <h1 className="font-serif-heading text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.15]">
+              Authoritative Trade Sourcing for <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent">Nepal & India</span>
+            </h1>
 
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-emerald-600/40 text-emerald-200 text-[9px] sm:text-xs font-bold border border-emerald-400/40 backdrop-blur-md shadow-md">
-              <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" />
-              <span>Verified Wholesalers</span>
-            </span>
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed font-normal max-w-2xl">
+              Connect directly with verified manufacturers, industrial machinery suppliers, medical disposables distributors, and agricultural spice exporters. Zero middleman markup with direct WhatsApp trade dispatch.
+            </p>
 
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-slate-800/60 text-slate-200 text-[9px] sm:text-xs font-bold border border-slate-700/60 backdrop-blur-md shadow-md hidden sm:inline-flex">
-              <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-300" />
-              <span>Multi-Vendor B2B Marketplace</span>
-            </span>
+            {/* Authority Key Metrics */}
+            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-b border-slate-800/80 py-4">
+              <div>
+                <p className="font-serif-heading text-2xl sm:text-3xl font-extrabold text-amber-400">1,400+</p>
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Verified Factories</p>
+              </div>
+              <div>
+                <p className="font-serif-heading text-2xl sm:text-3xl font-extrabold text-emerald-400">Rs. 18B+</p>
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">Annual Trade Volume</p>
+              </div>
+              <div>
+                <p className="font-serif-heading text-2xl sm:text-3xl font-extrabold text-indigo-400">100%</p>
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">RLS Data Security</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <button
+                onClick={() => {
+                  const el = document.getElementById('wholesale-catalog');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-slate-950 font-black text-xs shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer group"
+              >
+                <Search className="w-4 h-4 text-slate-950" />
+                <span>Browse Wholesale Catalog</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+
+              <button
+                onClick={toggleUserRole}
+                className="px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-700/80 shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Factory className="w-4 h-4 text-amber-400" />
+                <span>Become a Supplier</span>
+              </button>
+            </div>
+
           </div>
 
-          <h1 className="text-base sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
-            Direct Wholesale & <span className="text-teal-300">Industrial Product Sourcing</span>
-          </h1>
+          {/* RIGHT COLUMN: Asymmetric High-Quality Product Showcase Composition */}
+          <div className="lg:col-span-5 relative">
+            
+            {/* Background Glow Ring */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/20 to-indigo-600/20 rounded-3xl blur-2xl pointer-events-none" />
 
-          <p className="text-slate-100 text-[10px] sm:text-base leading-snug sm:leading-relaxed font-medium drop-shadow line-clamp-1 sm:line-clamp-none">
-            Source medical disposables, syringes, industrial machinery, and agricultural produce directly from verified suppliers in Nepal & India.
-          </p>
+            {/* Featured Composition Card */}
+            <div className="relative bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+              
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-xs text-white uppercase tracking-wider">Spotlight Industrial Listing</span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 text-[10px] font-extrabold uppercase border border-amber-400/30">
+                  Verified Unit
+                </span>
+              </div>
 
-          {/* Compact WhatsApp Logo Icon Button */}
-          <div className="pt-0.5 flex items-center gap-2">
-            <button
-              onClick={(e) => handleWhatsAppClick(e, null)}
-              className="px-3 py-1.5 sm:px-4 sm:py-3.5 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-950/60 border border-emerald-300/40 flex items-center justify-center gap-1.5 transition-all hover:scale-105 active:scale-95 text-[11px] sm:text-xs font-bold"
-              title="Chat on WhatsApp"
-            >
-              {/* WhatsApp SVG Logo */}
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 fill-current" viewBox="0 0 24 24">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-              </svg>
-              <span>Direct WhatsApp Sourcing</span>
-            </button>
+              {/* Main Product Showcase Image */}
+              <div className="relative h-52 sm:h-64 rounded-xl overflow-hidden group border border-slate-800">
+                <img
+                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80"
+                  alt="Industrial Machine"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+                
+                <div className="absolute bottom-3 left-3 right-3 text-white space-y-1">
+                  <span className="text-[10px] bg-indigo-600 text-white font-extrabold px-2 py-0.5 rounded">
+                    Industrial Machinery
+                  </span>
+                  <h3 className="font-serif-heading font-bold text-base text-white line-clamp-1">
+                    Automatic Hydraulic Paper Cup Machine 90pcs/min
+                  </h3>
+                  <div className="flex items-center justify-between text-xs text-slate-300">
+                    <span className="font-extrabold text-amber-400">Rs. 4,85,000 / Set</span>
+                    <span className="text-[11px] text-slate-400">MOQ: 1 Set</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating Sub-Features Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-[11px]">
+                    <p className="font-bold text-white">ISO Medical</p>
+                    <p className="text-[10px] text-slate-400">Sterile Luer Lock Syringes</p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div className="text-[11px]">
+                    <p className="font-bold text-white">Bulk Cardamom</p>
+                    <p className="text-[10px] text-slate-400">Grade A Export Quality</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Inquiry CTA Button */}
+              <button
+                onClick={(e) => handleWhatsAppClick(e, approvedProducts[0])}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4 fill-slate-950" />
+                <span>Instant Direct WhatsApp Lead Inquiry</span>
+              </button>
+
+            </div>
+
           </div>
+
         </div>
+
       </section>
 
-      {/* Visual Category Cards Section */}
-      <section className="space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-slate-900 font-extrabold text-sm sm:text-xl">
-            <Grid className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
-            <span>Product Categories</span>
+
+      {/* ========================================================================= */}
+      {/* 2. BENTO BOX CATEGORY LAYOUT: Dynamic Varied Cards with 0.5px Sharp Stroke */}
+      {/* ========================================================================= */}
+      <section className="space-y-6">
+        
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+              <Layers className="w-4 h-4" />
+              <span>Structured Wholesale Categories</span>
+            </div>
+            <h2 className="font-serif-heading text-2xl sm:text-4xl font-extrabold text-white mt-1">
+              Bento Sourcing Hub
+            </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-indigo-100 flex items-center gap-1">
-              <span>Slide Cards</span> &rarr;
-            </span>
-          </div>
+          <p className="text-xs text-slate-400 max-w-xs">
+            Select a category tile to filter approved industrial and consumer wholesale listings.
+          </p>
         </div>
 
-        {/* Category Visual Cards Single-Row Slider */}
-        <div className="flex items-center gap-2.5 sm:gap-4 overflow-x-auto pb-2 sm:pb-3 pt-0.5 scrollbar-none snap-x snap-mandatory scroll-smooth">
-          {CATEGORY_CARDS_DATA.map(cat => {
-            const isActive = selectedCategory === cat.name;
-            const count = cat.name === 'All Categories'
-              ? approvedProducts.length
-              : approvedProducts.filter(p => p.category === cat.name).length;
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {BENTO_CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.name;
+            const count = approvedProducts.filter(p => p.category === cat.name).length;
 
             return (
               <div
-                key={cat.name}
-                onClick={() => setSelectedCategory(cat.name)}
-                className={`group/card shrink-0 w-36 sm:w-60 h-24 sm:h-36 rounded-xl sm:rounded-3xl overflow-hidden cursor-pointer border-2 transition-all duration-300 shadow-sm snap-start relative ${
-                  isActive
-                    ? 'border-indigo-600 ring-2 sm:ring-4 ring-indigo-500/30 scale-[1.02] shadow-indigo-500/20'
-                    : 'border-white/80 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-0.5'
+                key={cat.id}
+                onClick={() => {
+                  setSelectedCategory(cat.name);
+                  const el = document.getElementById('wholesale-catalog');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className={`bento-card relative rounded-2xl overflow-hidden cursor-pointer border-stroke-subtle bg-slate-900 group ${cat.size} min-h-[220px] flex flex-col justify-between p-6 ${
+                  isSelected ? 'ring-2 ring-amber-400 border-amber-400 shadow-2xl' : 'hover:border-amber-400/50'
                 }`}
               >
-                {/* Background Image */}
+                {/* Background Image with Dark Gradient Overlay */}
                 <img
                   src={cat.image}
                   alt={cat.name}
-                  className="absolute inset-0 w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700 ease-out"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
-
-                {/* Gradient Overlays */}
                 <div className={`absolute inset-0 transition-opacity duration-300 ${
-                  isActive 
-                    ? 'bg-gradient-to-t from-slate-950/95 via-indigo-950/80 to-indigo-900/40' 
-                    : 'bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-slate-900/20 group-hover/card:from-slate-950/95'
+                  isSelected
+                    ? 'bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-900/40'
+                    : 'bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-900/30 group-hover:from-slate-950/95'
                 }`} />
 
-                {/* Active Indicator Badge */}
-                {isActive && (
-                  <div className="absolute top-2 right-2 bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-indigo-400">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-300" />
-                    <span>Active</span>
-                  </div>
-                )}
-
-                {/* Product Count Pill */}
-                <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold border border-white/20">
-                  {count} {count === 1 ? 'Product' : 'Products'}
+                {/* Top Tags */}
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${cat.badgeColor}`}>
+                    {cat.tag}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900/90 text-slate-300 font-bold text-[10px] border border-slate-800">
+                    {count} Listings
+                  </span>
                 </div>
 
-                {/* Card Bottom Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white space-y-0.5">
-                  <h3 className="font-extrabold text-xs sm:text-base leading-tight group-hover/card:text-indigo-300 transition-colors drop-shadow">
-                    {cat.name}
-                  </h3>
-                  <p className="text-[9px] sm:text-xs text-slate-300 font-medium line-clamp-1 opacity-90">
+                {/* Bottom Content */}
+                <div className="relative z-10 space-y-1.5 pt-12">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif-heading text-lg sm:text-2xl font-bold text-white group-hover:text-amber-300 transition-colors">
+                      {cat.name}
+                    </h3>
+                    <ArrowUpRight className="w-5 h-5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </div>
+                  <p className="text-xs text-slate-300 leading-snug line-clamp-2">
                     {cat.subtitle}
                   </p>
                 </div>
@@ -266,140 +386,226 @@ export default function BuyerCatalog() {
           })}
         </div>
 
-        {/* Selected Category Status & Reset Banner */}
+        {/* Category Reset Tag */}
         {selectedCategory !== 'All Categories' && (
-          <div className="p-3 sm:p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs text-indigo-900 font-medium">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-500">Filtered by:</span>
-              <span className="font-extrabold text-indigo-700 bg-white px-3 py-1 rounded-xl border border-indigo-200 shadow-sm flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
-                {selectedCategory}
-              </span>
-              <span className="text-slate-500 font-semibold hidden sm:inline">
-                ({filteredProducts.length} approved product{filteredProducts.length !== 1 ? 's' : ''} found)
-              </span>
-            </div>
-
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-bold">
+            <span className="flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              <span>Filtering by Category: <strong>{selectedCategory}</strong> ({filteredProducts.length} items)</span>
+            </span>
             <button
               onClick={() => setSelectedCategory('All Categories')}
-              className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1 transition-all text-xs shrink-0"
+              className="px-3 py-1 rounded-lg bg-amber-400 text-slate-950 font-black hover:bg-amber-300 transition-colors cursor-pointer"
             >
-              <X className="w-3.5 h-3.5 text-slate-400" /> Show All Categories
+              Show All Categories
             </button>
           </div>
         )}
+
       </section>
 
-      {/* Forced Mobile 2-Column Grid via .mobile-2col-grid class */}
-      {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-3xl p-8 sm:p-12 text-center space-y-3 border border-slate-200 shadow-sm">
-          <Package className="w-10 h-10 sm:w-12 sm:h-12 text-slate-400 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">No Approved Products Found</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Try resetting your search query or login to submit new products for admin approval.
-          </p>
-        </div>
-      ) : (
-        <div className="mobile-2col-grid">
-          {filteredProducts.map(product => {
-            const imgCount = (product.images && product.images.length > 0) ? product.images.length : 1;
+
+      {/* ========================================================================= */}
+      {/* 3. TRUST SIGNALS SECTION: Custom Line-Art Pillars & Light Contrast Canvas */}
+      {/* ========================================================================= */}
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden">
+        
+        {/* Background Ambient Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-600/5 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 space-y-10">
+          
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="text-amber-400 font-extrabold text-xs uppercase tracking-wider">
+              Institutional Trust Guarantees
+            </span>
+            <h2 className="font-serif-heading text-2xl sm:text-4xl font-extrabold text-white">
+              Why Global Buyers Sourcing via GS Nepal
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Enterprise security, transparent verification, and customs-ready logistics for cross-border B2B trade.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
-            return (
-              <div
-                key={product.id}
-                onClick={() => setSelectedProductModal(product)}
-                className="glass-card rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer flex flex-col justify-between min-w-0"
+            {/* Pillar 1 */}
+            <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-amber-400/50 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-serif-heading text-lg font-bold text-white">Verified Manufacturer Audits</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Every supplier on GS Nepal undergoes PAN/GST verification, factory capacity auditing, and Row Level Security (RLS) data protection.
+                </p>
+              </div>
+            </div>
+
+            {/* Pillar 2 */}
+            <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-emerald-400/50 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                <FileCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-serif-heading text-lg font-bold text-white">ISO Standard Quality Inspection</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Medical equipment and industrial machinery meet strict ISO 13485 & CE standards with pre-shipment sampling and specification audits.
+                </p>
+              </div>
+            </div>
+
+            {/* Pillar 3 */}
+            <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-indigo-400/50 transition-colors group">
+              <div className="w-12 h-12 rounded-xl bg-indigo-400/10 border border-indigo-400/30 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-serif-heading text-lg font-bold text-white">Cross-Border Logistics</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Seamless Nepal-India trade corridors with expedited customs documentation, freight forwarding assistance, and live shipment tracking.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      {/* ========================================================================= */}
+      {/* 4. WHOLESALE PRODUCTS CATALOG: Filterable Grid & Direct WhatsApp Trigger */}
+      {/* ========================================================================= */}
+      <section id="wholesale-catalog" className="space-y-6 pt-4">
+        
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Active Wholesale Inventory</span>
+            </div>
+            <h2 className="font-serif-heading text-2xl sm:text-3xl font-extrabold text-white mt-0.5">
+              Verified Product Catalog ({filteredProducts.length})
+            </h2>
+          </div>
+
+          {/* Category Quick Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {PRESET_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
+                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                }`}
               >
-                <div className="min-w-0">
-                  {/* Product Cover Image */}
-                  <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Product Cards Grid */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-16 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-4">
+            <Package className="w-12 h-12 text-slate-600 mx-auto" />
+            <div>
+              <p className="text-white font-bold text-base">No wholesale products found</p>
+              <p className="text-xs text-slate-400">Try adjusting your search query or selecting another category.</p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedCategory('All Categories');
+                setSearchQuery('');
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          <div className="mobile-2col-grid">
+            {filteredProducts.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => setSelectedProductModal(p)}
+                className="bg-slate-900/90 border-stroke-subtle rounded-2xl overflow-hidden cursor-pointer hover:border-amber-400/60 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Image Container */}
+                  <div className="relative h-40 sm:h-48 overflow-hidden bg-slate-950 border-b border-slate-800">
                     <img
-                      src={product.image_url}
-                      alt={product.name}
+                      src={p.image_url}
+                      alt={p.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        e.target.src = '/b2b_hero_background.png';
-                      }}
                     />
-                    
-                    <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 flex flex-col items-start gap-1">
-                      <span className="px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded bg-white/90 backdrop-blur-md text-[8px] sm:text-[11px] font-bold text-indigo-700 border border-slate-200 shadow-sm truncate max-w-[80px] sm:max-w-none">
-                        {product.category}
+                    <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                      <span className="px-2 py-0.5 rounded bg-slate-950/90 text-amber-300 text-[10px] font-black border border-amber-400/30">
+                        {p.category}
                       </span>
                     </div>
 
-                    <span className="absolute top-1.5 right-1.5 sm:top-3 sm:right-3 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded bg-emerald-50 text-[8px] sm:text-[11px] font-bold text-emerald-700 border border-emerald-200 shadow-sm flex items-center gap-0.5">
-                      <ShieldCheck className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-                      <span className="hidden sm:inline">Verified</span>
-                    </span>
-
-                    {imgCount > 1 && (
-                      <span className="absolute bottom-1 left-1.5 sm:bottom-2 sm:left-3 text-[8px] sm:text-[11px] text-slate-700 bg-white/90 px-1 py-0.5 rounded backdrop-blur-sm flex items-center gap-0.5 font-bold shadow-sm">
-                        <ImageIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
-                        {imgCount}
-                      </span>
-                    )}
+                    <div className="absolute bottom-2.5 right-2.5 bg-slate-950/90 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300 border border-slate-800 flex items-center gap-1">
+                      <Eye className="w-3 h-3 text-indigo-400" />
+                      <span>{p.views || 100}</span>
+                    </div>
                   </div>
 
-                  {/* Card Details */}
-                  <div className="p-2.5 sm:p-5 space-y-1.5 sm:space-y-3 min-w-0">
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-[11px] sm:text-base line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                        {product.name}
-                      </h3>
-                      {product.subcategory && (
-                        <p className="text-[8px] sm:text-[11px] text-indigo-600 font-semibold truncate pt-0.5">
-                          ↳ {product.subcategory}
-                        </p>
-                      )}
+                  {/* Card Content */}
+                  <div className="p-3.5 sm:p-5 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span className="font-semibold text-slate-300 line-clamp-1">{p.seller_name}</span>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <MapPin className="w-3 h-3 text-amber-400" />
+                        <span>{p.seller_location || 'Nepal'}</span>
+                      </span>
                     </div>
 
-                    <p className="text-slate-600 text-[10px] sm:text-xs line-clamp-2 leading-tight sm:leading-relaxed">
-                      {product.description}
+                    <h3 className="font-serif-heading font-bold text-sm sm:text-base text-white group-hover:text-amber-300 transition-colors line-clamp-2">
+                      {p.name}
+                    </h3>
+
+                    <p className="text-slate-400 text-[11px] line-clamp-2 leading-relaxed hidden sm:block">
+                      {p.description}
                     </p>
 
-                    {/* Price & MOQ Box */}
-                    <div className="bg-slate-50 rounded-lg sm:rounded-xl p-1.5 sm:p-3 border border-slate-200 space-y-1 min-w-0">
+                    <div className="pt-2 flex items-baseline justify-between border-t border-slate-800">
                       <div>
-                        <p className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400">Wholesale Price</p>
-                        <p className="text-xs sm:text-lg font-extrabold text-slate-900 leading-tight">
-                          Rs. {(Number(product.price) || 0).toLocaleString()}
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Wholesale Price</span>
+                        <p className="font-extrabold text-amber-400 text-sm sm:text-lg">
+                          Rs. {(Number(p.price) || 0).toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">/ {p.unit}</span>
                         </p>
-                        <p className="text-[8px] sm:text-xs text-slate-500 font-normal">/ {product.unit}</p>
                       </div>
-                      <div className="pt-0.5 border-t border-slate-200/60 flex items-center justify-between">
-                        <span className="text-[8px] uppercase font-bold text-slate-400">MOQ:</span>
-                        <span className="text-[9px] sm:text-xs font-bold text-indigo-700 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100 truncate max-w-[70px] sm:max-w-none">{product.moq}</span>
-                      </div>
-                    </div>
-
-                    {/* Seller Details */}
-                    <div className="flex items-center justify-between pt-0.5 text-[9px] sm:text-xs text-slate-500 border-t border-slate-100 min-w-0">
-                      <div className="flex items-center gap-1 truncate max-w-full">
-                        <Building2 className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-indigo-600 shrink-0" />
-                        <span className="truncate font-semibold text-slate-700">{product.seller_name}</span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider block">MOQ</span>
+                        <p className="font-bold text-slate-200 text-xs">{p.moq}</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Card WhatsApp Action CTA */}
-                <div className="p-2.5 pt-0 sm:p-5 sm:pt-0">
+                {/* Card Action Button */}
+                <div className="p-3 sm:p-4 pt-0">
                   <button
-                    onClick={(e) => handleWhatsAppClick(e, product)}
-                    className="w-full py-1.5 px-2 sm:py-2.5 sm:px-4 rounded-lg sm:rounded-xl font-bold text-[9px] sm:text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1 transition-all group-hover:shadow-emerald-600/30"
+                    onClick={(e) => handleWhatsAppClick(e, p)}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <MessageSquare className="w-3 h-3 fill-emerald-200/30 shrink-0" />
-                    <span className="truncate">Inquire</span>
-                    <ArrowUpRight className="w-3 h-3 opacity-80 shrink-0 hidden sm:inline" />
+                    <MessageSquare className="w-4 h-4 fill-slate-950" />
+                    <span>WhatsApp Inquiry</span>
                   </button>
                 </div>
 
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+
+      </section>
 
     </div>
   );
