@@ -25,6 +25,22 @@ export const saveStoredConfig = (config) => {
   localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
 };
 
+const STORAGE_KEY_CREDENTIALS = 'wsnepal_user_credentials';
+
+export const getStoredCredentials = () => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_CREDENTIALS);
+    if (data) return JSON.parse(data);
+  } catch (e) {}
+  return {};
+};
+
+export const saveStoredCredentials = (creds) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_CREDENTIALS, JSON.stringify(creds));
+  } catch (e) {}
+};
+
 export const DEFAULT_WHATSAPP_NUMBER = '9779821863885';
 
 // Seed Products with updated WhatsApp contact number +977 9821863885
