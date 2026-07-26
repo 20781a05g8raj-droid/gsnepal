@@ -2,46 +2,17 @@
 
 @layer base {
   body {
-    background-color: #0b0f19;
+    background-color: #f8fafc;
     color: #0f172a;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   }
-
-  h1, h2, h3, .font-serif-heading {
-    font-family: 'Playfair Display', Georgia, serif;
-  }
-}
-
-/* Custom Typography Utility */
-.font-serif-heading {
-  font-family: 'Playfair Display', Georgia, serif;
-}
-
-/* Custom Sharp Industrial Stroke & Borders */
-.border-stroke-subtle {
-  border: 0.5px solid rgba(226, 232, 240, 0.6);
-}
-
-.border-stroke-gold {
-  border: 0.5px solid rgba(212, 175, 55, 0.35);
-}
-
-/* Custom Bento Box Card Hover Effects */
-.bento-card {
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.bento-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(212, 175, 55, 0.6);
-  box-shadow: 0 20px 40px -15px rgba(11, 15, 25, 0.15);
 }
 
 /* Custom Glassmorphism Light Cards */
 .glass-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-  border: 0.5px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
 }
 

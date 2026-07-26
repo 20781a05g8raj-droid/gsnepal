@@ -17,16 +17,10 @@ import {
 } from 'lucide-react';
 
 export default function AuthModal() {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginUser, registerUser, showToast, authModalRole } = useApp();
+  const { isAuthModalOpen, setIsAuthModalOpen, loginUser, registerUser, showToast } = useApp();
 
   const [activeTab, setActiveTab] = useState('signup'); // 'login' | 'signup'
-  const [selectedRole, setSelectedRole] = useState('seller'); // 'buyer' | 'seller'
-
-  React.useEffect(() => {
-    if (authModalRole) {
-      setSelectedRole(authModalRole);
-    }
-  }, [authModalRole, isAuthModalOpen]);
+  const [selectedRole, setSelectedRole] = useState('buyer'); // 'buyer' | 'seller'
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
