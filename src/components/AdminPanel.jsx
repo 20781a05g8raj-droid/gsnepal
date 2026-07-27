@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import EditProductModal from './EditProductModal';
+import ShipmentTrackingModal from './ShipmentTrackingModal';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -35,7 +36,10 @@ import {
   Star,
   Lock,
   ShieldAlert,
-  ThumbsUp
+  ThumbsUp,
+  Truck,
+  MapPin,
+  Navigation
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -62,6 +66,7 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('company-analytics'); // 'company-analytics' | 'journal' | 'overview' | 'sellers' | 'buyers' | 'products' | 'inquiries' | 'sql'
   const [sqlCopied, setSqlCopied] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedShipmentTracking, setSelectedShipmentTracking] = useState(null);
   const [selectedSellerFilter, setSelectedSellerFilter] = useState('All Sellers');
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [companyAnalyticsFilter, setCompanyAnalyticsFilter] = useState('All Sellers');
@@ -1174,10 +1179,9 @@ create policy "Allow All Writes Inquiries" on public.inquiries for all using (tr
                     <th className="py-4 px-4">Seller Company</th>
                     <th className="py-4 px-4">Product Name</th>
                     <th className="py-4 px-4">Buyer Name</th>
-                    <th className="py-4 px-4">Qty & Unit</th>
-                    <th className="py-4 px-4">Unit Price (Rs.)</th>
-                    <th className="py-4 px-4">Total Amount (Rs.)</th>
-                    <th className="py-4 px-4">Payment Status</th>
+                    <th className="py-4 px-4">Total (Rs.)</th>
+                    <th className="py-4 px-4">Shipment & Delivery Status</th>
+                    <th className="py-4 px-4">Current Hub Location</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1188,21 +1192,52 @@ create policy "Allow All Writes Inquiries" on public.inquiries for all using (tr
                         <p className="font-bold text-slate-900 font-mono text-[11px]">{j.id}</p>
                         <p className="text-[10px] text-slate-400">{j.date}</p>
                       </td>
-                      <td className="py-4 px-4 font-bold text-indigo-700 max-w-[150px] truncate">{j.sellerName}</td>
-                      <td className="py-4 px-4 font-semibold text-slate-900 max-w-[180px] truncate">{j.productName}</td>
-                      <td className="py-4 px-4 text-slate-700 truncate max-w-[140px]">{j.buyerName}</td>
-                      <td className="py-4 px-4 font-bold text-slate-800">{j.quantity} {j.unit}</td>
-                      <td className="py-4 px-4 font-semibold text-slate-600">Rs. {formatPrice(j.pricePerUnit)}</td>
+                      <td className="py-4 px-4 font-bold text-indigo-700 max-w-[140px] truncate">{j.sellerName}</td>
+                      <td className="py-4 px-4 font-semibold text-slate-900 max-w-[160px] truncate">{j.productName}</td>
+                      <td className="py-4 px-4 text-slate-700 truncate max-w-[130px]">{j.buyerName}</td>
                       <td className="py-4 px-4 font-extrabold text-emerald-700">Rs. {formatPrice(j.totalAmount)}</td>
+                      
+                      {/* Shipment Status Pill */}
                       <td className="py-4 px-4">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200">
-                          {j.paymentStatus}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] border flex items-center gap-1 w-fit ${
+                            (j.shipmentStatus || j.deliveryStatus) === 'Delivered'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : (j.shipmentStatus || j.deliveryStatus) === 'Out for Delivery'
+                              ? 'bg-teal-50 text-teal-700 border-teal-200'
+                              : (j.shipmentStatus || j.deliveryStatus) === 'In Transit'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            <Truck className="w-3 h-3" />
+                            <span>{j.shipmentStatus || j.deliveryStatus || 'Dispatched'}</span>
+                          </span>
+                          <p className="text-[10px] text-slate-500 font-medium">ETA: {j.estimatedDeliveryDays || '2-3 Days'}</p>
+                        </div>
                       </td>
-                      <td className="py-4 px-6 text-right">
+
+                      {/* Current Location Hub */}
+                      <td className="py-4 px-4 max-w-[170px]">
+                        <p className="text-[11px] font-semibold text-slate-800 line-clamp-1 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                          <span>{j.currentLocation || 'Central Logistics Hub'}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">#{j.trackingNumber || 'WS-SHIP-9821'}</p>
+                      </td>
+
+                      <td className="py-4 px-6 text-right space-x-1.5">
+                        <button
+                          onClick={() => setSelectedShipmentTracking(j)}
+                          className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center gap-1 inline-flex cursor-pointer"
+                          title="Track & Update Shipment Location"
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Track Shipment</span>
+                        </button>
+
                         <button
                           onClick={() => deleteSalesJournalEntry && deleteSalesJournalEntry(j.id)}
-                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                          className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
                           title="Delete journal entry"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1993,6 +2028,15 @@ create policy "Allow All Writes Inquiries" on public.inquiries for all using (tr
             </form>
           </div>
         </div>
+      )}
+
+      {/* Shipment Tracking Modal */}
+      {selectedShipmentTracking && (
+        <ShipmentTrackingModal
+          trackingEntry={selectedShipmentTracking}
+          onClose={() => setSelectedShipmentTracking(null)}
+          isEditable={true}
+        />
       )}
 
     </div>

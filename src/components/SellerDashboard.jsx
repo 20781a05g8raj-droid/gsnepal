@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import ShipmentTrackingModal from './ShipmentTrackingModal';
 import {
   Store,
   PlusCircle,
@@ -10,27 +11,41 @@ import {
   Eye,
   Package,
   Layers,
-  Database
+  Database,
+  FileSpreadsheet,
+  Truck,
+  MapPin,
+  TrendingUp,
+  User
 } from 'lucide-react';
 
 export default function SellerDashboard() {
   const {
     userProfile,
     products,
+    salesJournal = [],
     setIsAddModalOpen,
     deleteProduct,
     setSelectedProductModal
   } = useApp();
 
-  const sellerProducts = products.filter(p => p.seller_id === (userProfile ? userProfile.id : 'seller-101'));
+  const [selectedShipmentTracking, setSelectedShipmentTracking] = useState(null);
+
+  const currentSellerId = userProfile ? userProfile.id : 'seller-101';
+  const currentSellerName = userProfile ? userProfile.name : 'Apex Industrial';
+
+  const sellerProducts = products.filter(p => p.seller_id === currentSellerId || p.seller_name === currentSellerName);
   const approvedCount = sellerProducts.filter(p => p.is_approved).length;
   const pendingCount = sellerProducts.filter(p => !p.is_approved).length;
+
+  // Filter Sales Journal for current seller
+  const sellerOrders = salesJournal.filter(j => j.sellerId === currentSellerId || j.sellerName === currentSellerName || currentSellerId === 'seller-101');
 
   return (
     <div className="space-y-8 pb-16">
       
-      {/* Visual Seller Header Banner - High Visibility Image */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 border border-indigo-200 p-8 sm:p-12 shadow-xl min-h-[300px] flex items-center">
+      {/* Visual Seller Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-900 border border-indigo-200 p-6 sm:p-10 shadow-xl min-h-[280px] flex items-center">
         <div 
           className="absolute inset-0 w-full h-full pointer-events-none opacity-85 bg-cover bg-center"
           style={{ backgroundImage: `url('/b2b_seller_banner.png')` }}
@@ -39,9 +54,9 @@ export default function SellerDashboard() {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 w-full text-white">
           <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-3.5 py-1 rounded-full bg-indigo-600/40 text-indigo-200 text-xs font-bold border border-indigo-400/40 backdrop-blur-md">
-                Seller Portal & Product Management
+                Seller Portal & Logistics Hub
               </span>
               <span className="px-3.5 py-1 rounded-full bg-slate-900/80 text-white text-xs font-semibold backdrop-blur-md flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
@@ -54,30 +69,27 @@ export default function SellerDashboard() {
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-200 font-medium">
-              List your wholesale inventory, track admin approval status, and manage direct WhatsApp buyer leads.
+              List single products, upload bulk CSV catalogs, track shipment stages, and manage order deliveries.
             </p>
           </div>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-5 py-3 rounded-2xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 shrink-0 transition-all"
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span>Add New Product Listing</span>
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-4 py-3 rounded-2xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Bulk CSV Import</span>
+            </button>
 
-      {/* RLS Policy Banner */}
-      <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-start gap-3 text-xs">
-        <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700 shrink-0">
-          <Database className="w-5 h-5" />
-        </div>
-        <div className="space-y-1">
-          <p className="font-bold text-indigo-900">Supabase Row Level Security (RLS) Active</p>
-          <p className="text-slate-700 leading-relaxed font-mono">
-            Policy SELECT: <span className="text-emerald-700 font-bold">auth.uid() = seller_id</span> — You are viewing only products listed under your Seller ID (<span className="text-indigo-700">{userProfile ? userProfile.id : 'seller-101'}</span>).
-          </p>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-5 py-3 rounded-2xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>+ Add Single Product</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -103,12 +115,111 @@ export default function SellerDashboard() {
 
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending Approval</span>
-            <Clock className="w-5 h-5 text-amber-600" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Orders & Shipments</span>
+            <Truck className="w-5 h-5 text-indigo-600" />
           </div>
-          <p className="text-3xl font-extrabold text-amber-600">{pendingCount}</p>
-          <p className="text-xs text-slate-500">Awaiting Admin review</p>
+          <p className="text-3xl font-extrabold text-indigo-600">{sellerOrders.length}</p>
+          <p className="text-xs text-slate-500">Active shipment tracking entries</p>
         </div>
+      </div>
+
+      {/* Shipment Tracking & Delivery Management Table */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+              <Truck className="w-5 h-5 text-indigo-600" />
+              <span>Order Sales & Shipment Tracking Manager</span>
+            </h3>
+            <p className="text-xs text-slate-500">Track package current location, estimated delivery days, and dispatch stages</p>
+          </div>
+          <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
+            {sellerOrders.length} Shipped Orders
+          </span>
+        </div>
+
+        {sellerOrders.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-500 space-y-2">
+            <Truck className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="font-bold text-slate-700">No active shipments found.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-[11px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-200">
+                  <th className="py-3.5 px-4">Order ID & Date</th>
+                  <th className="py-3.5 px-4">Buyer Customer</th>
+                  <th className="py-3.5 px-4">Product</th>
+                  <th className="py-3.5 px-4">Quantity & Total</th>
+                  <th className="py-3.5 px-4">Shipment Stage</th>
+                  <th className="py-3.5 px-4">Current Hub Location</th>
+                  <th className="py-3.5 px-6 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sellerOrders.map(order => (
+                  <tr key={order.id} className="hover:bg-slate-50/80">
+                    <td className="py-4 px-4 font-mono font-bold text-slate-900">
+                      <p>{order.id}</p>
+                      <p className="text-[10px] text-slate-400 font-normal">{order.date}</p>
+                    </td>
+
+                    <td className="py-4 px-4 font-bold text-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span>{order.buyerName}</span>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-4 font-semibold text-slate-900 max-w-[150px] truncate">{order.productName}</td>
+
+                    <td className="py-4 px-4">
+                      <p className="font-bold text-slate-800">{order.quantity} {order.unit}</p>
+                      <p className="font-extrabold text-emerald-700 text-[11px]">Rs. {(Number(order.totalAmount) || 0).toLocaleString()}</p>
+                    </td>
+
+                    <td className="py-4 px-4">
+                      <div className="space-y-1">
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] border flex items-center gap-1 w-fit ${
+                          (order.shipmentStatus || order.deliveryStatus) === 'Delivered'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : (order.shipmentStatus || order.deliveryStatus) === 'Out for Delivery'
+                            ? 'bg-teal-50 text-teal-700 border-teal-200'
+                            : (order.shipmentStatus || order.deliveryStatus) === 'In Transit'
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          <Truck className="w-3 h-3" />
+                          <span>{order.shipmentStatus || order.deliveryStatus || 'Dispatched'}</span>
+                        </span>
+                        <p className="text-[10px] text-slate-500 font-medium">ETA: {order.estimatedDeliveryDays || '2-3 Days'}</p>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-4 max-w-[160px]">
+                      <p className="text-[11px] font-semibold text-slate-800 line-clamp-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                        <span>{order.currentLocation || 'Logistics Hub'}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono">#{order.trackingNumber || 'WS-SHIP-9821'}</p>
+                    </td>
+
+                    <td className="py-4 px-6 text-right">
+                      <button
+                        onClick={() => setSelectedShipmentTracking(order)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center gap-1 inline-flex cursor-pointer transition-all"
+                      >
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Track / Update</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Products Table */}
@@ -118,7 +229,16 @@ export default function SellerDashboard() {
             <Layers className="w-5 h-5 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-lg">My Product Catalog</h3>
           </div>
-          <span className="text-xs text-slate-500">{sellerProducts.length} items listed</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold border border-indigo-200 text-xs hover:bg-indigo-100 flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Bulk CSV Import</span>
+            </button>
+            <span className="text-xs text-slate-500">{sellerProducts.length} items listed</span>
+          </div>
         </div>
 
         {sellerProducts.length === 0 ? (
@@ -213,6 +333,15 @@ export default function SellerDashboard() {
           </div>
         )}
       </div>
+
+      {/* Shipment Tracking Modal */}
+      {selectedShipmentTracking && (
+        <ShipmentTrackingModal
+          trackingEntry={selectedShipmentTracking}
+          onClose={() => setSelectedShipmentTracking(null)}
+          isEditable={true}
+        />
+      )}
 
     </div>
   );

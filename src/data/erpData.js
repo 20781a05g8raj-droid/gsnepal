@@ -150,7 +150,7 @@ export const INITIAL_INQUIRIES = [
 export const INITIAL_SALES_JOURNAL = [
   {
     id: 'JRN-2026-001',
-    date: '2026-07-22',
+    date: '2026-07-26',
     sellerId: 'seller-105',
     sellerName: 'MedTech Surgical & Hospital Supplies',
     buyerName: 'Avishek Sharma (Hospitech Nepal)',
@@ -161,11 +161,16 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 18,
     totalAmount: 900000,
     paymentStatus: 'Paid / Completed',
-    deliveryStatus: 'Dispatched via Express Logistics'
+    deliveryStatus: 'In Transit',
+    shipmentStatus: 'In Transit',
+    currentLocation: 'Kathmandu Sorting Hub -> Naubise Checkpoint',
+    estimatedDeliveryDays: '2 Days (Expected 29 July 2026)',
+    trackingNumber: 'WS-SHIP-982101',
+    courierPartner: 'Express Freight Nepal'
   },
   {
     id: 'JRN-2026-002',
-    date: '2026-07-20',
+    date: '2026-07-25',
     sellerId: 'seller-101',
     sellerName: 'Apex Industrial Machines Pvt Ltd',
     buyerName: 'Ramesh Thapa (Prabhu Trading House)',
@@ -176,11 +181,16 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 485000,
     totalAmount: 970000,
     paymentStatus: '50% Advance Received',
-    deliveryStatus: 'Under Factory Assembly'
+    deliveryStatus: 'Dispatched',
+    shipmentStatus: 'Dispatched',
+    currentLocation: 'Factory Dispatch Facility (Birgunj Industrial Area)',
+    estimatedDeliveryDays: '3-4 Days (Expected 30 July 2026)',
+    trackingNumber: 'WS-SHIP-889012',
+    courierPartner: 'Himalayan Cargo Logistics'
   },
   {
     id: 'JRN-2026-003',
-    date: '2026-07-18',
+    date: '2026-07-24',
     sellerId: 'seller-102',
     sellerName: 'Himalayan Herbal & Spices Export',
     buyerName: 'Suman Joshi (Himalayan Agro Trading)',
@@ -191,11 +201,16 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 1250,
     totalAmount: 625000,
     paymentStatus: 'Paid / Completed',
-    deliveryStatus: 'Delivered'
+    deliveryStatus: 'Out for Delivery',
+    shipmentStatus: 'Out for Delivery',
+    currentLocation: 'Local Delivery Van - Pokhara Hub Area 4',
+    estimatedDeliveryDays: 'Today (By 5:00 PM)',
+    trackingNumber: 'WS-SHIP-771029',
+    courierPartner: 'Nepal Direct Express'
   },
   {
     id: 'JRN-2026-004',
-    date: '2026-07-15',
+    date: '2026-07-20',
     sellerId: 'seller-101',
     sellerName: 'Apex Industrial Machines Pvt Ltd',
     buyerName: 'Kathmandu Plastic Industries',
@@ -206,11 +221,16 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 1850000,
     totalAmount: 1850000,
     paymentStatus: 'Paid / Completed',
-    deliveryStatus: 'Installed at Site'
+    deliveryStatus: 'Delivered',
+    shipmentStatus: 'Delivered',
+    currentLocation: 'Delivered & Installed at Customer Site (Patan Industrial Estate)',
+    estimatedDeliveryDays: 'Delivered on 22 July 2026',
+    trackingNumber: 'WS-SHIP-661902',
+    courierPartner: 'Heavy Machinery Transports'
   },
   {
     id: 'JRN-2026-005',
-    date: '2026-07-12',
+    date: '2026-07-15',
     sellerId: 'seller-103',
     sellerName: 'NextGen Electronics Wholesalers',
     buyerName: 'Surya Solar Power Systems',
@@ -221,7 +241,12 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 14500,
     totalAmount: 1450000,
     paymentStatus: 'Paid / Completed',
-    deliveryStatus: 'Delivered'
+    deliveryStatus: 'Delivered',
+    shipmentStatus: 'Delivered',
+    currentLocation: 'Delivered to Solar Warehouse, Butwal',
+    estimatedDeliveryDays: 'Delivered on 18 July 2026',
+    trackingNumber: 'WS-SHIP-550192',
+    courierPartner: 'Intercity Cargo'
   },
   {
     id: 'JRN-2026-006',
@@ -236,7 +261,12 @@ export const INITIAL_SALES_JOURNAL = [
     pricePerUnit: 2800,
     totalAmount: 420000,
     paymentStatus: 'Paid / Completed',
-    deliveryStatus: 'Delivered'
+    deliveryStatus: 'Delivered',
+    shipmentStatus: 'Delivered',
+    currentLocation: 'Received at Hospital Supply Store',
+    estimatedDeliveryDays: 'Delivered on 12 July 2026',
+    trackingNumber: 'WS-SHIP-440192',
+    courierPartner: 'MedExpress'
   },
   {
     id: 'JRN-2026-007',

@@ -497,7 +497,7 @@ export const AppProvider = ({ children }) => {
     showToast('Private Admin Review saved & synced to Supabase!', 'success');
   };
 
-  // Sales Journal Ledger Actions with Supabase Persistence
+  // Sales Journal Ledger Actions with Supabase Persistence & Live Shipment Tracking
   const addSalesJournalEntry = (entryData) => {
     const newEntry = {
       id: 'JRN-2026-' + Date.now().toString().slice(-4),
@@ -512,7 +512,12 @@ export const AppProvider = ({ children }) => {
       pricePerUnit: Number(entryData.pricePerUnit) || 0,
       totalAmount: (Number(entryData.quantity) || 1) * (Number(entryData.pricePerUnit) || 0),
       paymentStatus: entryData.paymentStatus || 'Paid / Completed',
-      deliveryStatus: entryData.deliveryStatus || 'Dispatched'
+      deliveryStatus: entryData.deliveryStatus || 'Dispatched',
+      shipmentStatus: entryData.shipmentStatus || 'Dispatched',
+      currentLocation: entryData.currentLocation || 'Central Logistics Hub',
+      estimatedDeliveryDays: entryData.estimatedDeliveryDays || '2-3 Days',
+      trackingNumber: entryData.trackingNumber || ('WS-SHIP-' + Date.now().toString().slice(-4)),
+      courierPartner: entryData.courierPartner || 'Express Cargo Nepal'
     };
 
     const updated = [newEntry, ...(salesJournal || [])];
@@ -520,6 +525,31 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(updated));
     upsertSupabaseSalesJournal(newEntry);
     showToast(`Recorded Sales Entry #${newEntry.id} in Seller Journal & Supabase!`, 'success');
+  };
+
+  const updateShipmentTracking = (entryId, trackingData) => {
+    let updatedEntry = null;
+    const updated = (salesJournal || []).map(entry => {
+      if (entry.id === entryId) {
+        updatedEntry = {
+          ...entry,
+          shipmentStatus: trackingData.shipmentStatus || entry.shipmentStatus || 'Dispatched',
+          currentLocation: trackingData.currentLocation || entry.currentLocation || 'In Transit',
+          estimatedDeliveryDays: trackingData.estimatedDeliveryDays || entry.estimatedDeliveryDays || '2 Days',
+          trackingNumber: trackingData.trackingNumber || entry.trackingNumber || ('WS-SHIP-' + Date.now().toString().slice(-4)),
+          courierPartner: trackingData.courierPartner || entry.courierPartner || 'Nepal Logistics',
+          deliveryStatus: trackingData.shipmentStatus || entry.deliveryStatus || 'In Transit',
+          lastTrackingUpdate: new Date().toISOString().split('T')[0]
+        };
+        return updatedEntry;
+      }
+      return entry;
+    });
+
+    setSalesJournal(updated);
+    localStorage.setItem(STORAGE_KEY_SALES_JOURNAL, JSON.stringify(updated));
+    if (updatedEntry) upsertSupabaseSalesJournal(updatedEntry);
+    showToast(`Shipment Tracking for #${entryId} updated successfully!`, 'success');
   };
 
   const deleteSalesJournalEntry = (entryId) => {
@@ -581,6 +611,39 @@ export const AppProvider = ({ children }) => {
     } else {
       showToast('Product submitted! Pending Admin Approval (Saved to Supabase).', 'info');
     }
+    setIsAddModalOpen(false);
+  };
+
+  // Bulk Product Sourcing CSV Upload Action
+  const addBulkProducts = (productsList) => {
+    if (!Array.isArray(productsList) || productsList.length === 0) return;
+
+    const newProducts = productsList.map((p, index) => ({
+      id: 'prod-' + Date.now().toString().slice(-6) + '-' + index,
+      seller_id: userProfile ? userProfile.id : 'seller-101',
+      seller_name: userProfile ? userProfile.name : 'Verified Manufacturer',
+      seller_phone: userProfile?.phone || DEFAULT_WHATSAPP_NUMBER,
+      seller_location: userProfile?.location || 'Nepal / India',
+      name: p.name || 'Wholesale Product',
+      description: p.description || 'Direct wholesale product listing sourced via bulk CSV upload.',
+      price: parseFloat(p.price) || 0,
+      unit: p.unit || 'Piece',
+      moq: p.moq || '1 Piece',
+      category: p.category || 'Industrial Machinery',
+      subcategory: p.subcategory || 'General Wholesale',
+      image_url: p.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      images: [p.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
+      specifications: p.specifications || [{ key: 'Import Source', value: 'Bulk CSV Sourcing' }],
+      is_approved: role === 'admin',
+      created_at: new Date().toISOString(),
+      views: 0
+    }));
+
+    const updated = [...newProducts, ...(products || [])];
+    updateProductsState(updated);
+    newProducts.forEach(p => upsertSupabaseProduct(p));
+
+    showToast(`Bulk CSV Upload Success! Imported & Listed ${newProducts.length} products.`, 'success');
     setIsAddModalOpen(false);
   };
 
@@ -702,10 +765,12 @@ export const AppProvider = ({ children }) => {
       updateSellerAdminReview,
       updateBuyerAdminReview,
       addSalesJournalEntry,
+      updateShipmentTracking,
       deleteSalesJournalEntry,
       addInquiry,
       products,
       addProduct,
+      addBulkProducts,
       updateProduct,
       approveProduct,
       deleteProduct,
@@ -733,3 +798,4 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useApp = () => useContext(AppContext);
+
