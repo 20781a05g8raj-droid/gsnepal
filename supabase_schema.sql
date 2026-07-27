@@ -74,7 +74,7 @@ create table if not exists public.products (
 );
 
 -- ---------------------------------------------------------------------
--- 4. SALES JOURNAL LEDGER TABLE (Seller Wholesale Sales Ledger)
+-- 4. SALES JOURNAL LEDGER TABLE (Seller Wholesale Sales Ledger & Shipment Tracking)
 -- ---------------------------------------------------------------------
 create table if not exists public.sales_journal (
   id text primary key,
@@ -90,8 +90,20 @@ create table if not exists public.sales_journal (
   total_amount numeric(12,2) not null default 0,
   payment_status text default 'Paid / Completed',
   delivery_status text default 'Dispatched',
+  shipment_status text default 'Dispatched',
+  current_location text default 'Central Logistics Hub',
+  estimated_delivery_days text default '2-3 Days',
+  tracking_number text default 'WS-SHIP-9821',
+  courier_partner text default 'Express Cargo Nepal',
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- Migration SQL for existing Supabase databases:
+alter table public.sales_journal add column if not exists shipment_status text default 'Dispatched';
+alter table public.sales_journal add column if not exists current_location text default 'Central Logistics Hub';
+alter table public.sales_journal add column if not exists estimated_delivery_days text default '2-3 Days';
+alter table public.sales_journal add column if not exists tracking_number text default 'WS-SHIP-9821';
+alter table public.sales_journal add column if not exists courier_partner text default 'Express Cargo Nepal';
 
 -- ---------------------------------------------------------------------
 -- 5. INQUIRIES LEADS TABLE (WhatsApp Trade Sourcing Inquiries)
