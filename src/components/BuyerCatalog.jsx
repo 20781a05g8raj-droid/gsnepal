@@ -66,6 +66,7 @@ export default function BuyerCatalog() {
     products = [],
     userProfile,
     searchQuery,
+    setSearchQuery,
     selectedCategory,
     setSelectedCategory,
     setSelectedProductModal,
@@ -86,14 +87,27 @@ export default function BuyerCatalog() {
   // Buyer sees ONLY approved products per Supabase RLS documentation policy
   const approvedProducts = (products || []).filter(p => p && p.is_approved);
 
+  const cleanSearchQuery = (searchQuery || '').trim().toLowerCase();
+
   const filteredProducts = approvedProducts.filter(p => {
+    if (!p) return false;
+    
+    // Check search query match
+    const matchesSearch = !cleanSearchQuery || 
+      (p.name && p.name.toLowerCase().includes(cleanSearchQuery)) ||
+      (p.description && p.description.toLowerCase().includes(cleanSearchQuery)) ||
+      (p.category && p.category.toLowerCase().includes(cleanSearchQuery)) ||
+      (p.subcategory && p.subcategory.toLowerCase().includes(cleanSearchQuery)) ||
+      (p.seller_name && p.seller_name.toLowerCase().includes(cleanSearchQuery));
+
+    // If search query is entered, prioritize search match over category filter
+    if (cleanSearchQuery) {
+      return matchesSearch;
+    }
+
+    // Normal category filter when no search query
     const matchesCategory = selectedCategory === 'All Categories' || p.category === selectedCategory;
-    const matchesSearch = !searchQuery || 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.subcategory && p.subcategory.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.seller_name && p.seller_name.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
+    return matchesCategory;
   });
 
   const handleWhatsAppClick = (e, product) => {
@@ -266,8 +280,30 @@ export default function BuyerCatalog() {
           })}
         </div>
 
+        {/* Active Search Query Banner */}
+        {searchQuery && (
+          <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-50 to-emerald-50 border border-indigo-200 flex items-center justify-between text-xs text-slate-900 font-medium shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500">Searching for:</span>
+              <span className="font-extrabold text-indigo-700 bg-white px-3 py-1 rounded-xl border border-indigo-300 shadow-sm flex items-center gap-1.5 text-xs sm:text-sm">
+                "{searchQuery}"
+              </span>
+              <span className="text-slate-600 font-semibold">
+                ({filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} found)
+              </span>
+            </div>
+
+            <button
+              onClick={() => setSearchQuery('')}
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-300 shadow-sm flex items-center gap-1.5 transition-all text-xs shrink-0 cursor-pointer"
+            >
+              <X className="w-4 h-4 text-slate-500" /> Clear Search
+            </button>
+          </div>
+        )}
+
         {/* Selected Category Status & Reset Banner */}
-        {selectedCategory !== 'All Categories' && (
+        {!searchQuery && selectedCategory !== 'All Categories' && (
           <div className="p-3 sm:p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs text-indigo-900 font-medium">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-500">Filtered by:</span>
@@ -282,7 +318,7 @@ export default function BuyerCatalog() {
 
             <button
               onClick={() => setSelectedCategory('All Categories')}
-              className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1 transition-all text-xs shrink-0"
+              className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold rounded-xl border border-slate-200 shadow-sm flex items-center gap-1 transition-all text-xs shrink-0 cursor-pointer"
             >
               <X className="w-3.5 h-3.5 text-slate-400" /> Show All Categories
             </button>
