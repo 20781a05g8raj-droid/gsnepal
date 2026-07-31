@@ -12,7 +12,9 @@ export const getStoredConfig = () => {
     const data = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (data) {
       const parsed = JSON.parse(data);
-      if (parsed && parsed.url && parsed.key) return parsed;
+      if (parsed && parsed.url && parsed.key && isValidSupabaseKey(parsed.key)) {
+        return parsed;
+      }
     }
   } catch (e) {}
   return {
@@ -186,7 +188,11 @@ export const getStoredProducts = () => {
 };
 
 export const saveStoredProducts = (products) => {
-  localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+  try {
+    localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(products));
+  } catch (e) {
+    console.warn('localStorage quota warning:', e);
+  }
 };
 
 export const getSupabaseClient = () => {
@@ -202,6 +208,56 @@ export const getSupabaseClient = () => {
     }
   }
   return null;
+};
+
+// Validate that a key looks like a real Supabase JWT anon key
+export const isValidSupabaseKey = (key) => {
+  if (!key || typeof key !== 'string') return false;
+  // Real Supabase anon keys are JWT tokens starting with eyJ
+  return key.startsWith('eyJ') && key.length > 100;
+};
+
+// Diagnostic: test Supabase connection (DB read + Storage bucket access)
+export const testSupabaseConnection = async (url, key) => {
+  const results = { db: false, storage: false, dbError: null, storageError: null, keyValid: false };
+  
+  results.keyValid = isValidSupabaseKey(key);
+  if (!results.keyValid) {
+    results.dbError = 'Invalid Anon Key format. Real key starts with eyJhbGci... (JWT token). Go to Supabase Dashboard → Project Settings → API → copy anon public key.';
+    results.storageError = results.dbError;
+    return results;
+  }
+
+  if (!url || !url.startsWith('http')) {
+    results.dbError = 'Invalid Supabase URL.';
+    results.storageError = results.dbError;
+    return results;
+  }
+
+  try {
+    const client = createClient(url, key);
+    
+    // Test DB: try to read from products table
+    const { data, error } = await client.from('products').select('id').limit(1);
+    if (error) {
+      results.dbError = error.message;
+    } else {
+      results.db = true;
+    }
+
+    // Test Storage: try to list files in product-images bucket
+    const { data: files, error: storageErr } = await client.storage.from('product-images').list('products', { limit: 1 });
+    if (storageErr) {
+      results.storageError = storageErr.message;
+    } else {
+      results.storage = true;
+    }
+  } catch (e) {
+    results.dbError = e.message;
+    results.storageError = e.message;
+  }
+
+  return results;
 };
 
 // Supabase Authentication Backend Helpers
@@ -236,12 +292,162 @@ export const signUpWithSupabaseAuth = async (email, password, metadata = {}) => 
   }
 };
 
+// Utility: check if a string is a base64 data URL
+export const isBase64DataUrl = (str) => {
+  return typeof str === 'string' && str.startsWith('data:');
+};
+
+// Utility: convert base64 data URL to a File/Blob for upload
+export const dataUrlToBlob = (dataUrl) => {
+  try {
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(parts[1]);
+    const u8arr = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) {
+      u8arr[i] = bstr.charCodeAt(i);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    console.warn('dataUrlToBlob conversion failed:', e);
+    return null;
+  }
+};
+
+export const compressImageFile = (file, maxWidth = 800, quality = 0.75) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith('image/')) {
+      resolve({ dataUrl: null, blob: null });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        // Also produce a Blob for direct Supabase upload
+        canvas.toBlob(
+          (blob) => {
+            resolve({ dataUrl: compressedDataUrl, blob: blob });
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve({ dataUrl: e.target?.result, blob: null });
+      img.src = e.target?.result;
+    };
+    reader.onerror = () => resolve({ dataUrl: null, blob: null });
+    reader.readAsDataURL(file);
+  });
+};
+
 export const signOutSupabaseAuth = async () => {
   const supabase = getSupabaseClient();
   if (!supabase) return;
   try {
     await supabase.auth.signOut();
   } catch (e) {}
+};
+
+// Upload image to Supabase Storage. Accepts File, Blob, or base64 data URL string.
+export const uploadImageToSupabaseStorage = async (input) => {
+  const supabase = getSupabaseClient();
+  if (!supabase || !input) {
+    console.error('[IMAGE UPLOAD] Failed: Supabase client is null. Check your Anon Key in .env or Supabase Settings.');
+    return null;
+  }
+
+  // Check key validity before attempting upload
+  const { key } = getStoredConfig();
+  const activeKey = key || DEFAULT_SUPABASE_KEY;
+  if (!isValidSupabaseKey(activeKey)) {
+    console.error('[IMAGE UPLOAD] Failed: Your Supabase Anon Key is INVALID.', 
+      '\nCurrent key:', activeKey?.substring(0, 20) + '...',
+      '\nReal keys start with: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      '\nGet it from: Supabase Dashboard → Project Settings → API → anon public key');
+    return null;
+  }
+
+  try {
+    let uploadBlob = null;
+    let fileExt = 'jpg';
+
+    if (typeof input === 'string' && isBase64DataUrl(input)) {
+      // Convert base64 data URL to Blob
+      uploadBlob = dataUrlToBlob(input);
+      if (!uploadBlob) return null;
+      const mimeMatch = input.match(/data:(image\/\w+)/);
+      if (mimeMatch) {
+        const mime = mimeMatch[1]; // e.g. image/jpeg
+        fileExt = mime.split('/')[1] || 'jpg';
+        if (fileExt === 'jpeg') fileExt = 'jpg';
+      }
+    } else if (input instanceof Blob || input instanceof File) {
+      uploadBlob = input;
+      if (input.name) {
+        fileExt = input.name.split('.').pop() || 'jpg';
+      } else if (input.type) {
+        fileExt = input.type.split('/')[1] || 'jpg';
+        if (fileExt === 'jpeg') fileExt = 'jpg';
+      }
+    } else {
+      return null;
+    }
+
+    const fileName = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+
+    // Upload attempt 1: Root directory of bucket
+    let { data, error } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, uploadBlob, {
+        contentType: uploadBlob.type || 'image/jpeg',
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    // Upload attempt 2: With raw input if blob had issue
+    if (error && (input instanceof File || input instanceof Blob)) {
+      const retry = await supabase.storage
+        .from('product-images')
+        .upload(fileName, input, {
+          contentType: input.type || 'image/jpeg',
+          cacheControl: '3600',
+          upsert: true
+        });
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error('[SUPABASE STORAGE ERROR]', error.message || error, error);
+      return null;
+    }
+
+    const targetPath = data?.path || fileName;
+    const { data: publicUrlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(targetPath);
+
+    return publicUrlData?.publicUrl || null;
+  } catch (err) {
+    console.error('[STORAGE EXCEPTION]', err);
+    return null;
+  }
 };
 
 // Data Mapper Utilities for Supabase <-> JS
@@ -438,12 +644,57 @@ export const fetchSupabaseInquiries = async () => {
 
 export const upsertSupabaseProduct = async (product) => {
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) {
+    console.warn('Supabase client not available — product not saved to DB.');
+    return { success: false, error: 'No Supabase client' };
+  }
   try {
-    const { error } = await supabase.from('products').upsert(product);
-    if (error) console.error('Supabase Product Sync Error:', error.message || '[REDACTED_ERROR]');
+    // Ensure images array has valid image references (HTTP or data URLs)
+    const rawImages = Array.isArray(product.images) && product.images.length > 0 
+      ? product.images 
+      : [product.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'];
+    const finalImages = rawImages.filter(img => typeof img === 'string' && img.trim().length > 0);
+    const finalImageUrl = finalImages[0] || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80';
+
+    // Handle seller_id FK: first check if seller exists, if not set null to avoid FK violation
+    let safeSellerId = product.seller_id || null;
+    if (safeSellerId) {
+      const { data: sellerCheck } = await supabase.from('sellers').select('id').eq('id', safeSellerId).maybeSingle();
+      if (!sellerCheck) {
+        safeSellerId = null; // Seller doesn't exist in DB, set null to avoid FK constraint error
+      }
+    }
+
+    const dbPayload = {
+      id: product.id,
+      seller_id: safeSellerId,
+      seller_name: product.seller_name || 'Verified Wholesaler',
+      seller_phone: product.seller_phone || DEFAULT_WHATSAPP_NUMBER,
+      seller_location: product.seller_location || 'Nepal',
+      name: product.name,
+      description: product.description || '',
+      price: Number(product.price) || 0,
+      unit: product.unit || 'Piece',
+      moq: product.moq || '1 Piece',
+      category: product.category || 'Industrial Machinery',
+      subcategory: product.subcategory || 'General Wholesale',
+      image_url: finalImageUrl,
+      images: finalImages,
+      specifications: product.specifications || [],
+      is_approved: product.is_approved !== false,
+      views: product.views || 0,
+      created_at: product.created_at || new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('products').upsert(dbPayload);
+    if (error) {
+      console.error('Supabase Product Upsert Error:', error.message || error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   } catch (e) {
-    console.warn('Supabase product save exception:', e.message || '[REDACTED_ERROR]');
+    console.error('Supabase product save exception:', e.message || e);
+    return { success: false, error: e.message };
   }
 };
 

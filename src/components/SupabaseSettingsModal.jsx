@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Database, CheckCircle2, Key, Link2, RefreshCw, Zap } from 'lucide-react';
-import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY, DEFAULT_SUPABASE_PROJECT } from '../lib/supabase';
+import { X, Database, CheckCircle2, Key, Link2, RefreshCw, Zap, AlertCircle, Loader2, Shield, HardDrive } from 'lucide-react';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY, DEFAULT_SUPABASE_PROJECT, testSupabaseConnection, isValidSupabaseKey } from '../lib/supabase';
 
 export default function SupabaseSettingsModal() {
   const {
@@ -15,6 +15,8 @@ export default function SupabaseSettingsModal() {
 
   const [url, setUrl] = useState(supabaseConfig.url || DEFAULT_SUPABASE_URL);
   const [key, setKey] = useState(supabaseConfig.key || DEFAULT_SUPABASE_KEY);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
 
   if (!isConfigModalOpen) return null;
 
@@ -22,6 +24,28 @@ export default function SupabaseSettingsModal() {
     e.preventDefault();
     saveConfig(url, key);
   };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testSupabaseConnection(url, key);
+      setTestResult(result);
+      if (result.db && result.storage) {
+        showToast('✅ Supabase connection successful! DB + Storage both working.', 'success');
+      } else if (!result.keyValid) {
+        showToast('❌ Invalid Anon Key! Please paste the real key from Supabase Dashboard.', 'error');
+      } else {
+        showToast('⚠️ Partial connection. Check details below.', 'warning');
+      }
+    } catch (err) {
+      setTestResult({ db: false, storage: false, dbError: err.message, storageError: err.message, keyValid: false });
+      showToast('❌ Connection test failed: ' + err.message, 'error');
+    }
+    setIsTesting(false);
+  };
+
+  const currentKeyValid = isValidSupabaseKey(key);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
@@ -50,20 +74,41 @@ export default function SupabaseSettingsModal() {
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6 text-xs">
+        <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
           
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
-            <div className="flex items-center gap-2 text-emerald-800 font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Live Supabase Credentials Configured ({DEFAULT_SUPABASE_PROJECT})</span>
+          {/* Key Status Banner */}
+          {!currentKeyValid ? (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+              <div className="flex items-center gap-2 text-rose-800 font-bold">
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+                <span>⚠️ Invalid Supabase Anon Key Detected!</span>
+              </div>
+              <p className="text-rose-700 leading-relaxed">
+                Your current key (<code className="bg-white px-1.5 py-0.5 rounded border border-rose-300 font-mono text-[10px]">{key?.substring(0, 25)}...</code>) is <strong>NOT a valid JWT token</strong>. 
+                Images will NOT upload to Supabase Storage and products will NOT save to the database.
+              </p>
+              <div className="p-3 bg-white rounded-xl border border-rose-200 text-[11px] space-y-1">
+                <p className="font-bold text-slate-900">How to get the real key:</p>
+                <ol className="list-decimal list-inside text-slate-700 space-y-0.5">
+                  <li>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-bold">supabase.com/dashboard</a></li>
+                  <li>Select your project</li>
+                  <li>Go to <strong>Project Settings → API</strong></li>
+                  <li>Copy the <strong>anon public</strong> key (starts with <code className="bg-slate-100 px-1 rounded">eyJhbGci...</code>)</li>
+                  <li>Paste it in the field below</li>
+                </ol>
+              </div>
             </div>
-            <p className="text-slate-700 leading-relaxed">
-              Active Supabase URL: <code className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px] text-emerald-900">{DEFAULT_SUPABASE_URL}</code>
-            </p>
-            <p className="text-slate-600">
-              Public Anon API Key: <code className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono text-[10px] text-emerald-900 truncate block max-w-full">{DEFAULT_SUPABASE_KEY}</code>
-            </p>
-          </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Valid Supabase Credentials Configured</span>
+              </div>
+              <p className="text-slate-700 leading-relaxed">
+                Active Supabase URL: <code className="bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px] text-emerald-900">{url}</code>
+              </p>
+            </div>
+          )}
 
           {/* Configuration Form */}
           <form onSubmit={handleSave} className="space-y-4">
@@ -75,7 +120,7 @@ export default function SupabaseSettingsModal() {
               <input
                 type="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => { setUrl(e.target.value); setTestResult(null); }}
                 placeholder="https://xyzcompany.supabase.co"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-[11px] focus:outline-none focus:border-indigo-500"
               />
@@ -85,15 +130,109 @@ export default function SupabaseSettingsModal() {
               <label className="font-bold text-slate-700 flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-indigo-600" />
                 Supabase Anon Public API Key
+                {currentKeyValid ? (
+                  <span className="text-emerald-600 text-[10px] font-bold ml-1">✓ Valid JWT</span>
+                ) : (
+                  <span className="text-rose-600 text-[10px] font-bold ml-1">✗ Invalid format</span>
+                )}
               </label>
               <input
-                type="password"
+                type="text"
                 value={key}
-                onChange={(e) => setKey(e.target.value)}
+                onChange={(e) => { setKey(e.target.value); setTestResult(null); }}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-[11px] focus:outline-none focus:border-indigo-500"
+                className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 font-mono text-[11px] focus:outline-none ${
+                  currentKeyValid ? 'border-emerald-300 focus:border-emerald-500' : 'border-rose-300 focus:border-rose-500'
+                }`}
               />
+              <p className="text-[10px] text-slate-400 mt-1">Real anon key is 200+ characters long, starts with eyJhbGciOi...</p>
             </div>
+
+            {/* Test Connection Button */}
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={isTesting}
+              className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                isTesting 
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md cursor-pointer'
+              }`}
+            >
+              {isTesting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Testing Connection...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  Test Supabase Connection
+                </>
+              )}
+            </button>
+
+            {/* Test Results */}
+            {testResult && (
+              <div className="space-y-2 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <h4 className="font-extrabold text-slate-900 text-sm">Connection Test Results</h4>
+                
+                {!testResult.keyValid && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-bold text-rose-800">Invalid Anon Key Format</p>
+                      <p className="text-rose-700 text-[11px] mt-0.5">{testResult.dbError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {testResult.keyValid && (
+                  <>
+                    <div className={`p-3 rounded-xl flex items-start gap-2 ${
+                      testResult.db ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'
+                    }`}>
+                      {testResult.db ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                      )}
+                      <div>
+                        <p className={`font-bold ${testResult.db ? 'text-emerald-800' : 'text-rose-800'}`}>
+                          <Database className="w-3 h-3 inline mr-1" />
+                          Database: {testResult.db ? '✅ Connected' : '❌ Failed'}
+                        </p>
+                        {testResult.dbError && <p className="text-rose-700 text-[11px] mt-0.5">{testResult.dbError}</p>}
+                      </div>
+                    </div>
+
+                    <div className={`p-3 rounded-xl flex items-start gap-2 ${
+                      testResult.storage ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'
+                    }`}>
+                      {testResult.storage ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      )}
+                      <div>
+                        <p className={`font-bold ${testResult.storage ? 'text-emerald-800' : 'text-amber-800'}`}>
+                          <HardDrive className="w-3 h-3 inline mr-1" />
+                          Storage Bucket: {testResult.storage ? '✅ product-images bucket accessible' : '⚠️ Bucket issue'}
+                        </p>
+                        {testResult.storageError && (
+                          <div className="text-[11px] mt-0.5">
+                            <p className="text-amber-700">{testResult.storageError}</p>
+                            {testResult.storageError.includes('not found') && (
+                              <p className="text-slate-600 mt-1 font-bold">Fix: Run the storage bucket SQL from supabase_schema.sql in Supabase SQL Editor.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-2">
               <button

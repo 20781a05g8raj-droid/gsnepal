@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, PlusCircle, Image, Trash2, Plus, Sliders, Layers, FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle } from 'lucide-react';
-import { PRESET_CATEGORIES } from '../lib/supabase';
+import { X, PlusCircle, Image, Trash2, Plus, Sliders, Layers, FileSpreadsheet, Upload, Download, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { PRESET_CATEGORIES, uploadImageToSupabaseStorage, compressImageFile, isBase64DataUrl } from '../lib/supabase';
 
 const SAMPLE_IMAGE_PRESETS = [
   { name: 'Medical Syringe', url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80' },
@@ -12,7 +12,7 @@ const SAMPLE_IMAGE_PRESETS = [
 ];
 
 export default function AddProductModal() {
-  const { isAddModalOpen, setIsAddModalOpen, addProduct, addBulkProducts, role } = useApp();
+  const { isAddModalOpen, setIsAddModalOpen, addProduct, addBulkProducts, role, showToast } = useApp();
 
   const [activeTabMode, setActiveTabMode] = useState('single'); // 'single' | 'csv'
 
@@ -30,12 +30,12 @@ export default function AddProductModal() {
     description: ''
   });
 
-  const [images, setImages] = useState([SAMPLE_IMAGE_PRESETS[0].url]);
+  const [images, setImages] = useState([]);
   const [newImageUrl, setNewImageUrl] = useState('');
-  const [specifications, setSpecifications] = useState([
-    { key: 'Material', value: 'Medical Grade / Stainless Steel' },
-    { key: 'Certification', value: 'ISO 13485 / CE Approved' }
-  ]);
+  // Track upload status per image: { [dataUrl]: 'uploading' | 'done' | 'failed' }
+  const [uploadStatus, setUploadStatus] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [specifications, setSpecifications] = useState([]);
   const [newSpecKey, setNewSpecKey] = useState('');
   const [newSpecValue, setNewSpecValue] = useState('');
 
@@ -44,6 +44,9 @@ export default function AddProductModal() {
   const [csvParsedProducts, setCsvParsedProducts] = useState([]);
   const [csvError, setCsvError] = useState('');
   const [isParsingCsv, setIsParsingCsv] = useState(false);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   if (!isAddModalOpen) return null;
 
@@ -58,8 +61,82 @@ export default function AddProductModal() {
   };
 
   const handleRemoveImage = (index) => {
-    if (images.length === 1) return;
     setImages(images.filter((_, i) => i !== index));
+  };
+
+  const handleFiles = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const arrayFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    
+    arrayFiles.forEach(async (file) => {
+      // Step 1: Compress image → get instant preview dataUrl + blob for upload
+      const { dataUrl: compressedDataUrl, blob: compressedBlob } = await compressImageFile(file);
+      if (!compressedDataUrl) return;
+
+      // Step 2: Show instant preview
+      setImages(prev => {
+        if (prev.length >= 5 || prev.includes(compressedDataUrl)) return prev;
+        return [...prev, compressedDataUrl];
+      });
+
+      // Step 3: Upload compressed blob to Supabase Storage in background
+      setUploadStatus(prev => ({ ...prev, [compressedDataUrl]: 'uploading' }));
+      try {
+        let storageUrl = await uploadImageToSupabaseStorage(compressedBlob || file);
+        
+        // If compressed blob failed, attempt direct raw file upload
+        if (!storageUrl && file) {
+          console.warn('[UPLOAD] Retrying direct raw file upload...');
+          storageUrl = await uploadImageToSupabaseStorage(file);
+        }
+
+        if (storageUrl) {
+          // Replace base64 preview with permanent Supabase Storage URL
+          setImages(prev => prev.map(img => img === compressedDataUrl ? storageUrl : img));
+          setUploadStatus(prev => {
+            const next = { ...prev };
+            delete next[compressedDataUrl];
+            next[storageUrl] = 'done';
+            return next;
+          });
+        } else {
+          // Keep compressed base64 preview as reliable local image so listing works cleanly
+          setUploadStatus(prev => {
+            const next = { ...prev };
+            delete next[compressedDataUrl];
+            return next;
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase Storage upload catch:', err);
+        setUploadStatus(prev => {
+          const next = { ...prev };
+          delete next[compressedDataUrl];
+          return next;
+        });
+      }
+    });
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
   };
 
   const handleAddSpec = () => {
@@ -73,24 +150,56 @@ export default function AddProductModal() {
     setSpecifications(specifications.filter((_, i) => i !== index));
   };
 
-  const handleSingleSubmit = (e) => {
+  const handleSingleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.price) return;
+    if (!formData.name || !formData.price) {
+      if (showToast) showToast('Please enter Product Name and Price to submit', 'error');
+      return;
+    }
 
-    const finalCategory = categoryMode === 'custom' && customCategory ? customCategory : selectedCategory;
+    setIsSubmitting(true);
 
-    addProduct({
-      ...formData,
-      category: finalCategory,
-      subcategory: subcategory || 'General Wholesale',
-      images: images,
-      image_url: images[0],
-      specifications: specifications
-    });
+    try {
+      // Before submitting: upload base64 images to Supabase Storage
+      const finalImages = [];
+      for (const imgUrl of images) {
+        if (isBase64DataUrl(imgUrl)) {
+          const storageUrl = await uploadImageToSupabaseStorage(imgUrl);
+          if (storageUrl) {
+            finalImages.push(storageUrl);
+          } else {
+            console.warn('Supabase storage upload failed or permissions restricted. Using base64 image string as fallback.');
+            finalImages.push(imgUrl);
+          }
+        } else {
+          finalImages.push(imgUrl);
+        }
+      }
 
-    setFormData({ name: '', price: '', unit: 'Piece', moq: '10 Pieces', description: '' });
-    setSubcategory('');
-    setCustomCategory('');
+      const finalCategory = categoryMode === 'custom' && customCategory ? customCategory : selectedCategory;
+
+      addProduct({
+        ...formData,
+        category: finalCategory,
+        subcategory: subcategory || 'General Wholesale',
+        images: finalImages,
+        image_url: finalImages[0],
+        specifications: specifications
+      });
+
+      setFormData({ name: '', price: '', unit: 'Piece', moq: '10 Pieces', description: '' });
+      setImages([]);
+      setSpecifications([]);
+      setSubcategory('');
+      setCustomCategory('');
+      setUploadStatus({});
+      setIsAddModalOpen(false);
+    } catch (err) {
+      console.error('Submit error:', err);
+      if (showToast) showToast('Error submitting product. Please try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // CSV File Parse Handler
@@ -372,66 +481,128 @@ export default function AddProductModal() {
               </div>
             </div>
 
-            {/* Multiple Images Upload & Gallery */}
+            {/* Drag & Drop Multiple Images Upload & Gallery */}
             <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <Image className="w-4 h-4 text-indigo-600" />
-                  <span>Product Image Gallery (Up to 5 URLs)</span>
+                  <Upload className="w-4 h-4 text-indigo-600" />
+                  <span>Product Images (Drag & Drop or Upload)</span>
                 </label>
                 <span className="text-[11px] text-indigo-600 font-bold">{images.length}/5 Images</span>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {images.map((imgUrl, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 group">
-                    <img src={imgUrl} alt={`Prod Image ${idx + 1}`} className="w-full h-full object-cover" />
-                    {images.length > 1 && (
+              {/* Drag and Drop Box */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                className={`relative border-2 border-dashed rounded-2xl p-6 transition-all duration-200 text-center cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                  isDragging
+                    ? 'border-indigo-600 bg-indigo-50/90 scale-[1.01] shadow-lg'
+                    : 'border-slate-300 bg-white hover:bg-slate-100/80 hover:border-indigo-400'
+                }`}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFiles(e.target.files)}
+                  className="hidden"
+                />
+
+                <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm">
+                  <Upload className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="font-extrabold text-slate-800 text-xs sm:text-sm">
+                    Drag & Drop Product Images Here
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    or <span className="text-indigo-600 font-bold underline">click to browse files</span> from your computer/device
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1">Supports PNG, JPG, WEBP (Max 5 images)</p>
+                </div>
+              </div>
+
+              {/* Thumbnails Gallery */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {images.map((imgUrl, idx) => {
+                  const status = uploadStatus[imgUrl];
+                  return (
+                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 shadow-sm group">
+                      <img src={imgUrl} alt={`Prod Image ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
-                        className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-sm"
+                        className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-md"
+                        title="Remove image"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
-                    )}
-                  </div>
-                ))}
+                      {idx === 0 && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[9px] font-black text-center py-0.5">
+                          COVER
+                        </span>
+                      )}
+                      {/* Upload status indicator */}
+                      {status === 'uploading' && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        </div>
+                      )}
+                      {status === 'done' && (
+                        <div className="absolute top-1 left-1 bg-emerald-500 text-white p-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                        </div>
+                      )}
+                      {status === 'failed' && (
+                        <div className="absolute top-1 left-1 bg-amber-500 text-white p-0.5 rounded-full" title="Upload to cloud failed, will use local preview">
+                          <AlertCircle className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
-              {images.length < 5 && (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={newImageUrl}
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    placeholder="Paste image URL (https://...)"
-                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddImage()}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
-                  >
-                    + Add Image
-                  </button>
-                </div>
-              )}
-
-              {/* Sample Preset Presets */}
-              <div className="pt-1">
-                <p className="text-[10px] text-slate-500 font-bold mb-1">Quick Preset Images:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SAMPLE_IMAGE_PRESETS.map((preset, idx) => (
+              {/* URL Fallback & Preset Buttons */}
+              <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                {images.length < 5 && (
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder="Or paste image URL (https://...)"
+                      className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800"
+                    />
                     <button
-                      key={idx}
                       type="button"
-                      onClick={() => handleAddImage(preset.url)}
-                      className="text-[10px] bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:border-indigo-400 text-slate-700 font-semibold"
+                      onClick={() => handleAddImage()}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
                     >
-                      + {preset.name}
+                      + Add URL
                     </button>
-                  ))}
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-[10px] text-slate-500 font-bold mb-1">Quick Sample Presets:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SAMPLE_IMAGE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAddImage(preset.url)}
+                        className="text-[10px] bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:border-indigo-400 text-slate-700 font-semibold"
+                      >
+                        + {preset.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -507,9 +678,15 @@ export default function AddProductModal() {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className={`px-6 py-2.5 rounded-xl font-bold text-white shadow-md transition-all flex items-center gap-2 ${
+                  isSubmitting 
+                    ? 'bg-indigo-400 cursor-not-allowed' 
+                    : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
+                }`}
               >
-                Submit Product Listing
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting ? 'Uploading & Saving...' : 'Submit Product Listing'}
               </button>
             </div>
 

@@ -13,8 +13,10 @@ import Toast from './components/Toast';
 import Footer from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
+import EditProductModal from './components/EditProductModal';
+
 function MainContent() {
-  const { activeNav } = useApp();
+  const { activeNav, editingProduct, setEditingProduct } = useApp();
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-900 selection:bg-indigo-600 selection:text-white">
@@ -23,7 +25,7 @@ function MainContent() {
       <Navbar />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-8">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-2 sm:px-4 lg:px-6 pt-1.5 sm:pt-3">
         
         {/* Dynamic View rendering with ErrorBoundary */}
         <ErrorBoundary>
@@ -38,6 +40,7 @@ function MainContent() {
       {/* Modals & Overlays */}
       <ProductDetailModal />
       <AddProductModal />
+      <EditProductModal editingProduct={editingProduct} setEditingProduct={setEditingProduct} />
       <SupabaseSettingsModal />
       <AuthModal />
       <Toast />

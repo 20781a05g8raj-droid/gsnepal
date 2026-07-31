@@ -24,7 +24,8 @@ import {
   signUpWithSupabaseAuth,
   signOutSupabaseAuth,
   getStoredCredentials,
-  saveStoredCredentials
+  saveStoredCredentials,
+  isBase64DataUrl
 } from '../lib/supabase';
 import { INITIAL_SELLERS, INITIAL_BUYERS, INITIAL_INQUIRIES, INITIAL_SALES_JOURNAL } from '../data/erpData';
 
@@ -93,6 +94,7 @@ export const AppProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedProductModal, setSelectedProductModal] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -112,11 +114,19 @@ export const AppProvider = ({ children }) => {
     setSupabaseConfig(loadedConfig);
 
     const syncSupabaseBackend = async () => {
-      // 1. Products Sync - ONLY Supabase Database Records
+      // 1. Products Sync - Merge Supabase DB Records + Local Products
       const spProducts = await fetchSupabaseProducts();
       if (spProducts !== null) {
-        setProducts(spProducts);
-        saveStoredProducts(spProducts);
+        const localProducts = getStoredProducts();
+        const spIds = new Set(spProducts.map(p => p.id));
+        const unsyncedLocal = localProducts.filter(p => p && p.id && !spIds.has(p.id));
+        const mergedProducts = [...spProducts, ...unsyncedLocal];
+        
+        setProducts(mergedProducts);
+        saveStoredProducts(mergedProducts);
+
+        // Background push any unsynced local products to Supabase DB
+        unsyncedLocal.forEach(p => upsertSupabaseProduct(p));
       }
 
       // 2. Sellers Sync - ONLY Supabase Database Records
@@ -261,8 +271,14 @@ export const AppProvider = ({ children }) => {
       return { success: true, user: newUser };
     }
 
-    // 4. Admin email shortcut fallback
-    if (cleanEmail.includes('admin')) {
+    // 4. Admin email verification against environment variables / strict credential check
+    const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'admin@wsnepal.com').toLowerCase();
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+
+    if (cleanEmail === adminEmail) {
+      if (password !== adminPassword) {
+        return { error: `Incorrect password entered for Admin (${cleanEmail}). Please enter the correct password.` };
+      }
       const newUser = {
         id: 'admin-001',
         name: 'WS Nepal Admin Desk',
@@ -580,38 +596,45 @@ export const AppProvider = ({ children }) => {
   };
 
   // Master Catalog Product Management Actions with Supabase Persistence
-  const addProduct = (productData) => {
-    const newProduct = {
-      id: 'prod-' + Date.now().toString().slice(-6),
-      seller_id: userProfile ? userProfile.id : 'seller-101',
-      seller_name: userProfile ? userProfile.name : 'Verified Manufacturer',
-      seller_phone: userProfile?.phone || DEFAULT_WHATSAPP_NUMBER,
-      seller_location: userProfile?.location || 'Nepal / India',
-      name: productData.name,
-      description: productData.description,
-      price: parseFloat(productData.price) || 0,
-      unit: productData.unit || 'Piece',
-      moq: productData.moq || '1 Piece',
-      category: productData.category || 'Industrial Machinery',
-      subcategory: productData.subcategory || '',
-      image_url: productData.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-      images: productData.images || [productData.image_url],
-      specifications: productData.specifications || [],
-      is_approved: role === 'admin',
-      created_at: new Date().toISOString(),
-      views: 0
-    };
+  const addProduct = async (productData) => {
+    try {
+      const newProduct = {
+        id: 'prod-' + Date.now().toString().slice(-6),
+        seller_id: userProfile ? userProfile.id : 'seller-101',
+        seller_name: userProfile ? userProfile.name : 'Verified Manufacturer',
+        seller_phone: userProfile?.phone || DEFAULT_WHATSAPP_NUMBER,
+        seller_location: userProfile?.location || 'Nepal / India',
+        name: productData.name,
+        description: productData.description || 'Direct wholesale product listing.',
+        price: parseFloat(productData.price) || 0,
+        unit: productData.unit || 'Piece',
+        moq: productData.moq || '1 Piece',
+        category: productData.category || 'Industrial Machinery',
+        subcategory: productData.subcategory || 'General Wholesale',
+        image_url: productData.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        images: (productData.images && productData.images.length > 0) ? productData.images : [productData.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
+        specifications: productData.specifications || [],
+        is_approved: true,
+        created_at: new Date().toISOString(),
+        views: 0
+      };
 
-    const updated = [newProduct, ...(products || [])];
-    updateProductsState(updated);
-    upsertSupabaseProduct(newProduct);
-    
-    if (role === 'admin') {
-      showToast('Product added, approved & saved to Supabase!', 'success');
-    } else {
-      showToast('Product submitted! Pending Admin Approval (Saved to Supabase).', 'info');
+      const updated = [newProduct, ...(products || [])];
+      updateProductsState(updated);
+
+      // Sync to Supabase DB and report result
+      const result = await upsertSupabaseProduct(newProduct);
+      if (result?.success) {
+        showToast(`Product "${newProduct.name}" published & saved to Supabase DB!`, 'success');
+      } else {
+        showToast(`Product "${newProduct.name}" saved locally. Supabase sync: ${result?.error || 'unavailable'}`, 'warning');
+      }
+    } catch (err) {
+      console.error('Error in addProduct:', err);
+      showToast('Product added locally. Database sync may have failed.', 'warning');
+    } finally {
+      setIsAddModalOpen(false);
     }
-    setIsAddModalOpen(false);
   };
 
   // Bulk Product Sourcing CSV Upload Action
@@ -647,7 +670,7 @@ export const AppProvider = ({ children }) => {
     setIsAddModalOpen(false);
   };
 
-  const updateProduct = (productId, updatedData) => {
+  const updateProduct = async (productId, updatedData) => {
     let updatedProduct = null;
     const updated = (products || []).map(p => {
       if (p.id === productId) {
@@ -657,8 +680,14 @@ export const AppProvider = ({ children }) => {
       return p;
     });
     updateProductsState(updated);
-    if (updatedProduct) upsertSupabaseProduct(updatedProduct);
-    showToast('Product updated in ERP & Supabase!', 'success');
+    if (updatedProduct) {
+      const result = await upsertSupabaseProduct(updatedProduct);
+      if (result?.success) {
+        showToast('Product updated & synced to Supabase DB!', 'success');
+      } else {
+        showToast(`Product updated locally. Supabase: ${result?.error || 'unavailable'}`, 'warning');
+      }
+    }
   };
 
   const approveProduct = (productId) => {
@@ -781,6 +810,8 @@ export const AppProvider = ({ children }) => {
       setSelectedCategory,
       selectedProductModal,
       setSelectedProductModal,
+      editingProduct,
+      setEditingProduct,
       isAddModalOpen,
       setIsAddModalOpen,
       isConfigModalOpen,

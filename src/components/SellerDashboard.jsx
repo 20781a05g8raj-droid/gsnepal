@@ -16,7 +16,8 @@ import {
   Truck,
   MapPin,
   TrendingUp,
-  User
+  User,
+  Edit3
 } from 'lucide-react';
 
 export default function SellerDashboard() {
@@ -26,7 +27,8 @@ export default function SellerDashboard() {
     salesJournal = [],
     setIsAddModalOpen,
     deleteProduct,
-    setSelectedProductModal
+    setSelectedProductModal,
+    setEditingProduct
   } = useApp();
 
   const [selectedShipmentTracking, setSelectedShipmentTracking] = useState(null);
@@ -312,14 +314,21 @@ export default function SellerDashboard() {
                     <td className="py-4 px-6 text-right space-x-2">
                       <button
                         onClick={() => setSelectedProductModal(product)}
-                        className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                        className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                         title="View details & preview WhatsApp inquiry"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => setEditingProduct(product)}
+                        className="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                        title="Edit product details"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => deleteProduct(product.id)}
-                        className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                        className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
                         title="Delete listing"
                       >
                         <Trash2 className="w-4 h-4" />
