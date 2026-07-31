@@ -360,7 +360,7 @@ export const AppProvider = ({ children }) => {
         location: userData.location || 'Kathmandu, Nepal',
         panGst: userData.panNumber || 'PAN Pending',
         category: 'General Wholesaler',
-        status: 'Verified',
+        status: 'Pending Verification',
         totalProducts: 0,
         joinedDate: new Date().toISOString().split('T')[0],
         adminRating: 5,
@@ -609,7 +609,7 @@ export const AppProvider = ({ children }) => {
         image_url: productData.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
         images: (productData.images && productData.images.length > 0) ? productData.images : [productData.image_url || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
         specifications: productData.specifications || [],
-        is_approved: true,
+        is_approved: role === 'admin',
         created_at: new Date().toISOString(),
         views: 0
       };
