@@ -114,19 +114,14 @@ export const AppProvider = ({ children }) => {
     setSupabaseConfig(loadedConfig);
 
     const syncSupabaseBackend = async () => {
-      // 1. Products Sync - Merge Supabase DB Records + Local Products
+      // 1. Products Sync - Stored Products from Supabase DB or localStorage fallback
       const spProducts = await fetchSupabaseProducts();
       if (spProducts !== null) {
+        setProducts(spProducts);
+        saveStoredProducts(spProducts);
+      } else {
         const localProducts = getStoredProducts();
-        const spIds = new Set(spProducts.map(p => p.id));
-        const unsyncedLocal = localProducts.filter(p => p && p.id && !spIds.has(p.id));
-        const mergedProducts = [...spProducts, ...unsyncedLocal];
-        
-        setProducts(mergedProducts);
-        saveStoredProducts(mergedProducts);
-
-        // Background push any unsynced local products to Supabase DB
-        unsyncedLocal.forEach(p => upsertSupabaseProduct(p));
+        setProducts(localProducts);
       }
 
       // 2. Sellers Sync - ONLY Supabase Database Records
