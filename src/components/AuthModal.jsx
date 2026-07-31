@@ -75,8 +75,8 @@ export default function AuthModal() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!buyerData.name || !buyerData.email || !buyerData.password || !buyerData.confirmPassword) {
-      setErrorMsg('Please fill in all required fields.');
+    if (!buyerData.name || !buyerData.email || !buyerData.city || !buyerData.password || !buyerData.confirmPassword) {
+      setErrorMsg('Please fill in all required fields including City / Company Address.');
       return;
     }
 
@@ -94,7 +94,7 @@ export default function AuthModal() {
       name: buyerData.name,
       email: buyerData.email,
       phone: buyerData.phone || '9779821863885',
-      location: buyerData.city || 'Nepal / India',
+      location: buyerData.city,
       password: buyerData.password,
       role: 'buyer'
     });
@@ -111,8 +111,8 @@ export default function AuthModal() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!sellerData.companyName || !sellerData.email || !sellerData.password || !sellerData.confirmPassword) {
-      setErrorMsg('Please fill in all required fields.');
+    if (!sellerData.companyName || !sellerData.email || !sellerData.location || !sellerData.password || !sellerData.confirmPassword) {
+      setErrorMsg('Please fill in all required fields including Full Company Address / Location.');
       return;
     }
 
@@ -131,7 +131,7 @@ export default function AuthModal() {
       contactPerson: sellerData.contactName || sellerData.companyName,
       email: sellerData.email,
       phone: sellerData.phone || '9779821863885',
-      location: sellerData.location || 'Kathmandu, Nepal',
+      location: sellerData.location,
       panNumber: sellerData.panNumber || '',
       password: sellerData.password,
       role: 'seller'
@@ -320,14 +320,15 @@ export default function AuthModal() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700">City / Location</label>
+                    <label className="font-bold text-slate-700">City / Company Address *</label>
                     <div className="relative">
                       <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
+                        required
                         value={buyerData.city}
                         onChange={(e) => setBuyerData({ ...buyerData, city: e.target.value })}
-                        placeholder="e.g. Pokhara, Nepal"
+                        placeholder="e.g. New Road, Pokhara, Nepal"
                         className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -389,6 +390,21 @@ export default function AuthModal() {
                         onChange={(e) => setSellerData({ ...sellerData, companyName: e.target.value })}
                         placeholder="e.g. Everest Machinery Works Pvt Ltd"
                         className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700">Full Factory / Business Address & Location *</label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        value={sellerData.location}
+                        onChange={(e) => setSellerData({ ...sellerData, location: e.target.value })}
+                        placeholder="e.g. Biratnagar Industrial Estate, Nepal"
+                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
                   </div>
